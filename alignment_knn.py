@@ -1,5 +1,5 @@
 import os, sys, subprocess
-from Bio import SeqIO
+#from Bio import SeqIO
 import multiprocessing as mp
 from multiprocessing import Pool
 import shutil
@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 import argparse
 import numpy as np
-import json
+#import json
 
 # the following package is from local
 from utils import obo_tools, run_diamond
@@ -22,8 +22,8 @@ example usage:
 keywords arguments:
     -w, --workdir: working directory for the pipline
     -f, --fasta: path of fasta file
-    -d, --database: dir path of database, should include three sub directories: BPO, MFO, CCO, each sub directory should contain a fasta file named AlignmentKNN.fasta
-    -g, --goa: dir path of goa labels file, should include three files: BPO_Term, MFO_Term, CCO_Term, each file should have multiple lines, each line contains a protein name and its go terms separated by tab, the go terms separated by comma
+    -d, --database: dir path of database, should include three sub directories: EC1, EC2, EC3, EC4, each sub directory should contain a fasta file named AlignmentKNN.fasta
+    -g, --goa: dir path of goa labels file, should include three files: EC1_Term, EC2_Term, EC3_Term, EC4_Term each file should have multiple lines, each line contains a protein name and its go terms separated by tab, the go terms separated by comma
     -t, --threads: number of threads, default is the number of cores of the machine
 """
 
@@ -47,7 +47,7 @@ class AlignmentKNN:
         Database_dir:str, 
         Database_label:str, 
         num_threads:int=mp.cpu_count(), 
-        aspects=['BPO', 'CCO', 'MFO'],
+        aspects=['EC1', 'EC2', 'EC3', 'EC4'],
         continue_from_last:bool=False,
     ):
         
@@ -76,8 +76,18 @@ class AlignmentKNN:
             dict: dict of fasta file, key is protein name, value is protein sequence
         """
         seq_dict = {}
-        for record in SeqIO.parse(fast_file, "fasta"):
-            seq_dict[record.id] = str(record.seq)
+        #for record in SeqIO.parse(fast_file, "fasta"):
+            #seq_dict[record.id] = str(record.seq)
+
+        fp=open(fasta_file)
+        for block in ('\n'+fp.read()).split('\n>'):
+            if len(block.strip())==0:
+                continue
+            lines=block.splitlines()
+            header=lines[0]
+            sequence=''.join(lines[1:])
+            seq_dict[header]=sequence
+        fp.close()
         return seq_dict
 
     def read_labels(self, filename:str)->dict:
@@ -135,7 +145,7 @@ class AlignmentKNN:
             cur_aspect_df['term'] = cur_aspect_df['term'].apply(lambda x: ','.join(x))
             unique_entryids = set(cur_aspect_df['EntryID'].unique())
             if len(unique_entryids) == 0:
-                raise Exception(f"Error: no {aspect} terms found in {terms_tsv}, please make sure aspect is one of BPO, MFO, CCO")
+                raise Exception(f"Error: no {aspect} terms found in {terms_tsv}, please make sure aspect is one of EC1, EC2, EC3, EC4")
 
             # write to file
             labels_path = os.path.join(self.GOA, f"{aspect}_Term")

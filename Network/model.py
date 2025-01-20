@@ -230,6 +230,7 @@ class InterLabelResNet(nn.Module):
 
 
         # batch normalization for each branch
+        #print(f"shape={x1.shape},{x2.shape},{x3.shape}")
         x1 = self.bn1(x1)
         x2 = self.bn2(x2)
         x3 = self.bn3(x3)

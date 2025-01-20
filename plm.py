@@ -1,5 +1,5 @@
 import os
-from Bio import SeqIO
+#from Bio import SeqIO
 import argparse
 from tqdm import tqdm
 import torch
@@ -7,7 +7,7 @@ from esm import Alphabet, FastaBatchedDataset, ProteinBertModel, pretrained
 import esm
 import numpy as np
 import re
-import json
+#import json
 
 from settings import settings_dict as settings
 
@@ -56,9 +56,20 @@ class PlmEmbed:
         if fasta_file is None:
             fasta_file = self.fasta_file
 
-        fasta_dict = {}
-        for record in SeqIO.parse(fasta_file, 'fasta'):
-            fasta_dict[record.id] = str(record.seq)
+        #fasta_dict = {}
+        #for record in SeqIO.parse(fasta_file, 'fasta'):
+            #fasta_dict[record.id] = str(record.seq)
+        
+        fasta_dict=dict()
+        fp=open(fasta_file)
+        for block in ('\n'+fp.read()).split('\n>'):
+            if len(block.strip())==0:
+                continue
+            lines=block.splitlines()
+            header=lines[0]
+            sequence=''.join(lines[1:])
+            fasta_dict[header]=sequence
+        fp.close()
         return fasta_dict  
     
     def filter_fasta(self, fasta_file=None, cache_dir=None, filltered_fasta_file=None):

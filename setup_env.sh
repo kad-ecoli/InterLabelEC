@@ -7,7 +7,9 @@ conda_dir="$basedir/conda"
 # Check if Conda is installed; if not, download and install it
 if [ ! -d "$conda_dir" ]; then
   echo "Conda not found. Installing Miniconda..."
-  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O $basedir/miniconda.sh
+  if [ ! -s "$basedir/miniconda.sh" ];then
+      wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O $basedir/miniconda.sh
+  fi
   bash $basedir/miniconda.sh -b -p $conda_dir
   rm $basedir/miniconda.sh
 fi

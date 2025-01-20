@@ -9,7 +9,7 @@ import scipy.sparse as ssp
 
 from Network.model import InterlabelGODataset, InterLabelResNet
 from Network.model_utils import InterLabelLoss, EarlyStop, FmaxMetric, Trainer
-import utils.obo_tools as obo_tools
+#import utils.obo_tools as obo_tools
 from plm import PlmEmbed
 from settings import settings_dict as settings
 from settings import training_config, add_res_dict
@@ -41,16 +41,29 @@ from settings import training_config, add_res_dict
 # #     4: 70825,
 # # }
 
-# add_res_dict = {
-#     'BPO':True,
-#     'CCO':False,
-#     'MFO':False,
-# } # whether to add residual connections or not
 
-oboTools = obo_tools.ObOTools(
-    go_obo=settings['obo_file'],
-    obo_pkl=settings['obo_pkl_file']
-)
+#oboTools = obo_tools.ObOTools(
+    #go_obo=settings['obo_file'],
+    #obo_pkl=settings['obo_pkl_file']
+#)
+
+def generate_pseudo_child_matrix(term_list:list[str]):
+    """
+    Generate the child matrix for the aspect
+
+    Args:
+        go2vec: the go2vec dict where the key is the go term and the value is the index of the go term in the embedding matrix
+    
+    Returns:
+        child_matrix: the child matrix for the aspect where child_matrix[i][j] = 1 if the jth GO term is a subclass of the ith GO term else 0
+    """
+    
+    training_terms = term_list
+    #CM_ij = 1 if the jth GO term is a subclass of the ith GO term
+    child_matrix = np.zeros((len(training_terms), len(training_terms)))
+    # fill diagonal with 1
+    np.fill_diagonal(child_matrix, 1)
+    return child_matrix
 
 def seed_everything(seed):
     rd.seed(seed)
@@ -70,7 +83,7 @@ def read_ia(filename):
     ia_dict = dict()
     with open(filename, 'r') as f:
         for line in f:
-            line = line.strip().split()
+            line = line.strip().split()[:2]
             if len(line)!= 2:
                 raise ValueError('IA file format error')
             ia_dict[line[0]] = line[1]
@@ -96,7 +109,7 @@ def main(
         model_dir:str=settings['MODEL_CHECKPOINT_DIR'],
         ia_file:str=settings['ia_file'],
         device:str='cuda', 
-        aspects:list=['BPO', 'CCO', 'MFO'],
+        aspects:list=['EC1', 'EC2', 'EC3', 'EC4'],
         training_config:dict=training_config,
         add_res_dict:dict=add_res_dict,
     ):
@@ -120,7 +133,8 @@ def main(
         vec2go = get_vec2go(term_list) # get the vec2go_dict
         weight_array = calculate_weight_matrix(term_list, vec2go, ia_dict) # calculate the weight_array
         weight_tensor = torch.from_numpy(weight_array).to(device) # convert the weight_array to weight_tensor
-        child_array = oboTools.generate_child_matrix(term_list) # generate the child_array
+        #child_array = oboTools.generate_child_matrix(term_list) # generate the child_array
+        child_array = generate_pseudo_child_matrix(term_list) # generate the child_array
         # save child_array
         child_array_path = os.path.join(aspect_model_dir, 'child_matrix_ssp.npz')
         # convert it to ssp format
@@ -134,6 +148,11 @@ def main(
             # seed_everything(seed)
 
             save_name = os.path.join(aspect_model_dir, f'model_{i}.pt')
+            log_file = os.path.join(aspect_model_dir, f'log_{i}.pkl')
+            print(f"training {save_name}")
+            #if os.path.isfile(save_name) and os.path.isfile(log_file):
+                #continue
+
             model = InterLabelResNet(
                 aspect=aspect,
                 layer_list=training_config['layer_list'],
@@ -159,7 +178,11 @@ def main(
                 #labels_npy=os.path.join(train_data_dir, aspect, f'{aspect}_test_labels.npz'),
                 repr_layers=training_config['repr_layers'],
             )
-            train_loader = DataLoader(train_dataset, batch_size = training_config['batch_size'], shuffle=True)
+            batch_size = training_config['batch_size']
+            while batch_size>=3 and len(train_dataset.names) % batch_size==1:
+                batch_size -= 1
+                print(f"reduce batch_size from {training_config['batch_size']} to {batch_size}")
+            train_loader = DataLoader(train_dataset, batch_size = batch_size, shuffle=True)
             val_loader = DataLoader(val_dataset, batch_size = training_config['pred_batch_size'], shuffle=False)
 
             loss_fn = InterLabelLoss(device=device)
@@ -190,7 +213,6 @@ def main(
             save_model, best_loss, best_f1, num_epoch = trainer.fit() # save_model is a boolean value indicating whether to save the model or not
             if save_model:
                 model.save_config(save_name)
-                log_file = os.path.join(aspect_model_dir, f'log_{i}.pkl')
                 log_dict = dict()
                 log_dict['best_loss'] = best_loss
                 log_dict['best_f1'] = best_f1
@@ -211,7 +233,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_dir', type=str, default=settings['MODEL_CHECKPOINT_DIR'], help='directory to save models')
     parser.add_argument('--ia_file', type=str, default=settings['ia_file'], help='file containing the information content of GO terms')
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--aspects', type=str, nargs='+', default=['BPO', 'CCO', 'MFO'], choices=['BPO', 'CCO', 'MFO'], help='aspects of model to train')
+    parser.add_argument('--aspects', type=str, nargs='+', default=['EC1', 'EC2', 'EC3', 'EC4'], choices=['EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to train')
     
     args = parser.parse_args()
     args.train_data = os.path.abspath(args.train_data)
@@ -220,6 +242,9 @@ if __name__ == '__main__':
     
     if not torch.cuda.is_available():
         args.device = 'cpu'
+        print("Using CPU")
+    else:
+        print("CUDA is available")
     
     main(
         train_data_dir=args.train_data,
@@ -229,11 +254,3 @@ if __name__ == '__main__':
         device=args.device,
         aspects=args.aspects,
     )
-
-
-
-
-    
-
-
-

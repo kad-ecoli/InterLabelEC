@@ -1,9 +1,4 @@
-import os, shutil
-import json
-import pandas as pd
-from utils.obo_tools import ObOTools
-from Bio import SeqIO
-
+import os
 file_dir = os.path.dirname(os.path.realpath(__file__))
 from settings import settings_dict as settings
 
@@ -15,103 +10,78 @@ def main():
     tmp_dir = os.path.join(file_dir, settings['tmp_dir'])
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
-    # Download the obo file
-    print('Downloading the newest obo file')
-    obo_file_path = os.path.join(file_dir, settings['obo_file'])
-    obo_pkl_path = os.path.join(file_dir, settings['obo_pkl_file'])
     # remove the old obo file if exists
-    if os.path.exists(obo_file_path):
-        os.remove(obo_file_path)
-    if os.path.exists(obo_pkl_path):
-        os.remove(obo_pkl_path)
-    os.system(f"wget http://purl.obolibrary.org/obo/go.obo -O {obo_file_path}")
-    oboTools = ObOTools()
-    oboTools.init_obo(go_obo=obo_file_path)
     aspect_map_dict = {
-        "P": "BPO",
-        "F": "MFO",
-        "C": "CCO",
+        "1": "EC1",
+        "2": "EC2",
+        "3": "EC3",
+        "4": "EC4",
     }
-    # Download the newest UNIPROT GOA file
-    print('Downloading the newest UNIPROT GOA file')
-    os.system(f"wget ftp://ftp.ebi.ac.uk/pub/databases/GO/goa/UNIPROT/goa_uniprot_all.gaf.gz -O {tmp_dir}/goa.gaf.gz")
     # only grep exp data
-    print('Extracting the exp data')
-    os.system(f'zcat {tmp_dir}/goa.gaf.gz | grep "^UniProtKB" | grep -P "(\tEXP\t)|(\tIDA\t)|(\tIPI\t)|(\tIMP\t)|(\tIGI\t)|(\tIEP\t)|(\tTAS\t)|(\tIC\t)|(\tHTP\t)|(\tHDA\t)|(\tHMP\t)|(\tHGI\t)|(\tHEP\t)" > {tmp_dir}/train.gaf')
+    if not os.path.isfile(settings['train_ec_fasta']):
+        print("ERROR! no such file "+settings['train_ec_fasta'])
+        exit(1)
+    if not os.path.isfile(settings['train_ec_tsv']):
+        print("ERROR! no such file "+settings['train_ec_tsv'])
+        exit(1)
 
-    # download sequence
-    print('Downloading the sequence')
-    os.system(f'wget ftp://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz -O {tmp_dir}/uniprot_sprot.fasta.gz')
-    os.system(f'zcat {tmp_dir}/uniprot_sprot.fasta.gz >> {tmp_dir}/uniprot_sprot.fasta')
+    print("prepare "+settings['train_seqs_fasta'])
+    totalN=0
+    seleN=0
+    seq_list=[]
+    target_list=[]
+    fp=open(settings['train_ec_fasta'])
+    for block in ('\n'+fp.read()).split('\n>'):
+        if not block.strip():
+            continue
+        lines=block.splitlines()
+        header=lines[0].split()[0]
+        sequence=''.join(lines[1:])
+        totalN+=1
+        if len(sequence)<30 or len(sequence)>1024:
+            continue
+        seleN+=1
+        seq_list.append((len(sequence),'>'+header+'\n'+sequence+'\n'))
+        target_list.append(header)
+    fp.close()
+    seq_list.sort(reverse=True)
+    target_set=set(target_list)
+    print("writing %d out of %d sequence"%(seleN,totalN))
+    txt=''.join([seq for L,seq in seq_list])
+    fp=open(settings['train_seqs_fasta'],'w')
+    fp.write(txt)
+    fp.close()
 
-    # filter the train.gaf
-    df = pd.read_csv(f'{tmp_dir}/train.gaf', sep='\t', header=None)
-    # exclude the not
-    df = df[~df[6].str.startswith('NOT')]
-    df = df[df[0] == "UniProtKB"]
-    df = df[[1,4,8]]
-    col_names = ['EntryID', 'term', 'aspect']
-    df.columns = col_names
-    df['aspect'] = df['aspect'].apply(lambda x: aspect_map_dict[x])
-    all_entry_ids = set(df['EntryID'].unique())
-    present_ids = set()
-
-    # get fasta sequence from sprot fasta
-    print('Extracting the fasta sequence')
-    train_seqs = f'{tmp_dir}/train_seq.fasta'
-    with open(train_seqs, 'w') as f:
-        for record in SeqIO.parse(f'{tmp_dir}/uniprot_sprot.fasta', 'fasta'):
-            if '|' in record.id:
-                record.id = record.id.split('|')[1]
-            if record.id in all_entry_ids:
-                f.write(f'>{record.id}\n')
-                f.write(f'{record.seq}\n')
-                present_ids.add(record.id)
+    #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.4 -M 5000 -n 2 -T 16 -g 1 -sc 1"
+    #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.5 -M 5000 -n 2 -T 16 -g 1 -sc 1"
+    cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.6 -M 5000 -n 3 -T 16 -g 1 -sc 1"
+    #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.7 -M 5000 -n 4 -T 16 -g 1 -sc 1"
+    #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.8 -M 5000 -n 5 -T 16 -g 1 -sc 1"
+    print(cmd)
+    os.system(cmd)
     
-    # missing ids
-    missing_ids = all_entry_ids - present_ids
-    # download the missing ids
-    print(f'Downloading {len(missing_ids)} missing ids')
-    for target in missing_ids:
-        # curl "https://rest.uniprot.org/unisave/$target?format=fasta&versions=1" |cut -f1,2 -d'|' |sed 's/>sp|/>/g' |sed 's/>tr|/>/g' 
-        os.system(f'curl "https://rest.uniprot.org/unisave/{target}?format=fasta&versions=1" |cut -f1,2 -d\'|\' |sed \'s/>sp|/>/g\' |sed \'s/>tr|/>/g\' >> {train_seqs}')
-    
-    # get all id from the train_seqs
-    all_ids = set()
-    for record in SeqIO.parse(train_seqs, 'fasta'):
-        all_ids.add(record.id)
-    
-    df = df[df['EntryID'].isin(all_ids)]
-    bp_df = df[df['aspect'] == 'BPO']
-    cc_df = df[df['aspect'] == 'CCO']
-    mf_df = df[df['aspect'] == 'MFO']
-    # only keep the term that is in the obo file
-    bp_df = bp_df[bp_df['term'].apply(lambda x: x in oboTools.term2aspect)]
-    cc_df = cc_df[cc_df['term'].apply(lambda x: x in oboTools.term2aspect)]
-    mf_df = mf_df[mf_df['term'].apply(lambda x: x in oboTools.term2aspect)]
-    # collapse
-    bp_df = bp_df.groupby(['EntryID', 'aspect'])['term'].apply(set).reset_index()
-    cc_df = cc_df.groupby(['EntryID', 'aspect'])['term'].apply(set).reset_index()
-    mf_df = mf_df.groupby(['EntryID', 'aspect'])['term'].apply(set).reset_index()
-    # apply the oboTools
-    bp_df['term'] = bp_df['term'].apply(lambda x: oboTools.backprop_terms(x))
-    bp_df = bp_df.explode('term')
-    cc_df['term'] = cc_df['term'].apply(lambda x: oboTools.backprop_terms(x))
-    cc_df = cc_df.explode('term')
-    mf_df['term'] = mf_df['term'].apply(lambda x: oboTools.backprop_terms(x))
-    mf_df = mf_df.explode('term')
-    prop_df = pd.concat([bp_df, mf_df, cc_df])
-    prop_df.to_csv(f'{tmp_dir}/train_terms.tsv', index=False, sep='\t')
-    
-    # cp the train_sequences and train_terms to raw data
-    parent_dir = os.path.dirname(os.path.join(file_dir, settings['train_terms_tsv']))
-    if not os.path.exists(parent_dir):
-        os.makedirs(parent_dir)
-    shutil.copy(f"{tmp_dir}/train_seq.fasta", os.path.join(file_dir, settings['train_seqs_fasta']))
-    shutil.copy(f"{tmp_dir}/train_terms.tsv", os.path.join(file_dir, settings['train_terms_tsv']))
-    # rm the tmp_dir
-    if os.path.exists(tmp_dir):
-        shutil.rmtree(tmp_dir)
+    print("prepare "+settings['train_terms_tsv'])
+    line_list=[]
+    train_ec_dict=dict()
+    fp=open(settings['train_ec_tsv'])
+    for line in fp.read().splitlines():
+        if line.startswith('#'):
+            continue
+        target,ECnumber=line.split('\t')[:2]
+        if not target in target_set:
+            continue
+        EC_list=ECnumber.split('.')
+        for i in range(1,5):
+            if EC_list[i-1]=='-':
+                continue
+            ECnumber='.'.join(EC_list[:i]+['-']*(4-i))
+            line_list.append("%s\tEC%d\t%s\n"%(target,i,ECnumber))
+    fp.close()
+    txt='EntryID\taspect\tterm\n'+''.join(list(set(line_list)))
+    fp=open(settings['train_terms_tsv'],'w')
+    fp.write(txt)
+    fp.close()
+    return
 
 if __name__ == '__main__':
     main()

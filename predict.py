@@ -33,11 +33,11 @@ def record_time(func):
         return result
     return wrapper
 
-InterLabel_weight_dict = {'BPO': 0.94, 'CCO': 0.55, 'MFO': 0.76} 
+InterLabel_weight_dict = {'EC1': 0.94, 'EC2': 0.55, 'EC3': 0.76, 'EC4': 0.8} 
 
 # ZLPR_PTF1_GOF1
-a_weight_dict = {'BPO': 0.45, 'CCO': 0.45, 'MFO': 0.25}
-k_weight_dict = {'BPO': 1.5, 'CCO': 4, 'MFO': 5}
+a_weight_dict = {'EC1': 0.45, 'EC2': 0.45, 'EC3': 0.25, 'EC4': 0.45}
+k_weight_dict = {'EC1': 1.5,  'EC2': 4,    'EC3': 5,    'EC4': 6}
 
 
 
@@ -49,7 +49,7 @@ class Main_pipeline:
         num_threads:int=mp.cpu_count(),
         device:str='cuda',
         top_terms:int=500, # number of top terms to be keeped in the prediction
-        aspects:list=['BPO', 'CCO', 'MFO'], # aspects of model
+        aspects:list=['EC1', 'EC2', 'EC3', 'EC4'], # aspects of model
         pred_batch_size:int=512,
         InterLabel_min_weight:float=0.1,
         no_align:bool=False,
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_gpu', action='store_true', help='use gpu')
     parser.add_argument('--no_align', action='store_true', help='do not perform alignment')
     parser.add_argument('--no_dnn', action='store_true', help='do not perform dnn prediction')
-    parser.add_argument('--aspect', type=str, nargs='+', default=['BPO', 'CCO', 'MFO'], choices=['BPO', 'CCO', 'MFO'], help='aspects of model to predict')
+    parser.add_argument('--aspect', type=str, nargs='+', default=['EC1', 'EC2', 'EC3', 'EC4'], choices=['EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to predict')
     parser.add_argument('--cache', type=str, default=None, help='cache dir that store precomputed embeddings')
     parser.add_argument('--seqid', action='store_true', help='use seqid to combine results')
     args = parser.parse_args()

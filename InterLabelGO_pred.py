@@ -1,6 +1,6 @@
 import os, argparse
 import torch
-from Bio import SeqIO
+#from Bio import SeqIO
 import numpy as np
 import pickle
 import scipy.sparse as ssp
@@ -8,20 +8,20 @@ import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-import math, json
+import math #, json
 
 from Network.model import InterlabelGODataset, InterLabelResNet
 from Network.model_utils import Predictor
-from utils.obo_tools import ObOTools
+#from utils.obo_tools import ObOTools
 from plm import PlmEmbed
 from settings import settings_dict as settings
 
 # the following package is from local
 from utils import obo_tools
-oboTools = obo_tools.ObOTools(
-    go_obo=settings['obo_file'],
-    obo_pkl=settings['obo_pkl_file']
-)
+#oboTools = obo_tools.ObOTools(
+    #go_obo=settings['obo_file'],
+    #obo_pkl=settings['obo_pkl_file']
+#)V
 
 class InterLabelGO_pipeline:
     def __init__(self,
@@ -30,7 +30,7 @@ class InterLabelGO_pipeline:
         pred_batch_size:int=512,
         device:str='cuda',
         top_terms:int=500, # number of top terms to be keeped in the prediction
-        aspects:list=['BPO', 'CCO', 'MFO'], # aspects to predict
+        aspects:list=['EC1', 'EC2', 'EC3', 'EC4'], # aspects to predict
         cache_dir:str=None,
         ## the following parameters should be fixed if you want to use the pretrained model
         repr_layers:list=[34, 35, 36],
@@ -73,9 +73,20 @@ class InterLabelGO_pipeline:
         if fasta_file is None:
             fasta_file = self.fasta_file
 
-        fasta_dict = {}
-        for record in SeqIO.parse(fasta_file, 'fasta'):
-            fasta_dict[record.id] = str(record.seq)
+        #fasta_dict = {}
+        #for record in SeqIO.parse(fasta_file, 'fasta'):
+            #fasta_dict[record.id] = str(record.seq)
+        
+        fasta_dict=dict()
+        fp=open(fasta_file)
+        for block in ('\n'+fp.read()).split('\n>'):
+            if len(block.strip())==0:
+                continue
+            lines=block.splitlines()
+            header=lines[0]
+            sequence=''.join(lines[1:])
+            fasta_dict[header]=sequence
+        fp.close()
         return fasta_dict  
     
     def get_embed_features(self):
@@ -129,7 +140,8 @@ class InterLabelGO_pipeline:
         predictor.update_loader(PredictLoader)
 
         result_file = self.result_file
-        columns = ['EntryID','term','score','aspect', 'go_term_name']
+        #columns = ['EntryID','term','score','aspect', 'go_term_name']
+        columns = ['EntryID','term','score']
         with open(result_file, 'w') as f:
             f.write('\t'.join(columns))
             f.write('\n')
@@ -137,7 +149,7 @@ class InterLabelGO_pipeline:
         for aspect in self.aspects:
             aspect_model_dir = os.path.join(self.model_dir,aspect)
             if not os.path.exists(aspect_model_dir):
-                print(f'No model found for {aspect}')
+                print(f'No model found for {aspect} at {aspect_model_dir}')
                 continue
             models = os.listdir(aspect_model_dir)
             models = [os.path.join(aspect_model_dir, model) for model in models if model.endswith('.pt')]
@@ -187,7 +199,7 @@ class InterLabelGO_pipeline:
             # only keep the top 500 terms
             df = df.groupby(['EntryID', 'aspect']).head(self.top_terms)
             df = df[['EntryID', 'term', 'score', 'aspect']]
-            df['go_term_name'] = df['term'].apply(lambda x: oboTools.goID2name(x))
+            #df['go_term_name'] = df['term'].apply(lambda x: oboTools.goID2name(x))
             # write to tsv file
             df.to_csv(result_file, index=False, sep='\t', mode='a', header=False)
             #print(seeds_dict)
@@ -203,7 +215,8 @@ class InterLabelGO_pipeline:
         # Propagate the prediction to the parent terms
         result_dict = {}
         for EntryID, term_score in tqdm(df_dict.items(), desc='propagate prediction', ascii=' >='):
-            result_dict[EntryID] = oboTools.backprop_cscore(term_score, min_cscore=0.001)
+            #result_dict[EntryID] = oboTools.backprop_cscore(term_score, min_cscore=0.001)
+            result_dict[EntryID] = term_score
         
         # Convert back to dataframe
         rows = []
@@ -229,7 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--model_dir', type=str, help='model directory', default=settings['MODEL_CHECKPOINT_DIR'])
     parser.add_argument('--esm_path', type=str, help='esm model path', default=settings['esm3b_path'])
     parser.add_argument('--use_gpu', action='store_true', help='use gpu')
-    parser.add_argument('--aspect', type=str, nargs='+', default=['BPO', 'CCO', 'MFO'], choices=['BPO', 'CCO', 'MFO'], help='aspects of model to predict')
+    parser.add_argument('--aspect', type=str, nargs='+', default=['EC1', 'EC2', 'EC3', 'EC4'], choices=['EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to predict')
     parser.add_argument('--cache_dir', type=str, help='cache directory', default=None)
     args = parser.parse_args()
     working_dir = os.path.abspath(args.working_dir)

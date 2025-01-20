@@ -12,22 +12,29 @@ settings_dict = {
     'root_dir': root_dir,
     'DATA_DIR': join(root_dir, 'Data'),
     'ia_file': join(root_dir, 'Data', 'network_training_data', 'IA.txt'),
-    'ia_script': join(root_dir, 'utils', 'ia.py'),
+    'ia_script': join(root_dir, 'utils', 'IC.py'),
     'obo_file': join(root_dir, 'utils', 'go-basic.obo'),
     'obo_pkl_file': join(root_dir, 'utils', 'obo.pkl'),
 
-    'train_terms_tsv': join(root_dir, 'Data', 'cafa5_raw_data', 'train_terms.tsv'),
-    'train_seqs_fasta': join(root_dir, 'Data', 'cafa5_raw_data', 'train_seq.fasta'),
+    #'train_terms_tsv':  join(root_dir, 'Data', 'cafa5_raw_data', 'train_terms.tsv'),
+    #'train_seqs_fasta': join(root_dir, 'Data', 'cafa5_raw_data', 'train_seq.fasta'),
+    'train_ec_tsv':     join(root_dir, 'Data', 'ec_raw_data', 'exp.ec.tsv'),
+    'train_ec_fasta':   join(root_dir, 'Data', 'ec_raw_data', 'exp.ec.fasta'),
+    'train_terms_tsv':  join(root_dir, 'Data', 'ec_raw_data', 'train_terms.tsv'),
+    'train_seqs_fasta': join(root_dir, 'Data', 'ec_raw_data', 'train_seq.fasta'),
     'diamond_path': join(root_dir, 'utils', 'diamond'),
+    'cdhit_path': join(root_dir, 'utils', 'cd-hit'),
 
     'esm3b_path': join(root_dir, 'Data', 'esm_models', 'esm2_t36_3B_UR50D.pt'),
     'embedding_dir': join(root_dir, 'Data', 'embeddings'),
     'tmp_dir': join(root_dir, 'Data', 'tmp'),
 
     'TRAIN_DATA_CLEAN_DIR': join(root_dir, 'Data', 'network_training_data'),
+    'TRAIN_DATA_SMALL_DIR': join(root_dir, 'Data', 'network_trainsmall_data'),
     'alignment_db': join(root_dir, 'Data', 'alignment_database'),
     'alignment_labels': join(root_dir, 'Data', 'alignment_labels'),
     'MODEL_CHECKPOINT_DIR': join(root_dir, 'models', 'ZLPR_PTF1_GOF1'),
+    'MODEL_SMALL_DIR': join(root_dir, 'models_small', 'ZLPR_PTF1_GOF1'),
     'LOGS_DIR': join(root_dir, 'logs'),
     'SUBMISSION_DIR': join(root_dir, 'submissions')
 }
@@ -52,7 +59,8 @@ training_config = {
 }
 
 add_res_dict = {
-    'BPO':True,
-    'CCO':False,
-    'MFO':False,
+    'EC1':True,
+    'EC2':True,
+    'EC3':True,
+    'EC4':True,
 } # whether to add residual connections or not
