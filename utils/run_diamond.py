@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import argparse
 from io import StringIO
-from Bio import SeqIO
+#from Bio import SeqIO
 import os
 
 doc = """This script can be imported or run from the command line.

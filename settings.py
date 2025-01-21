@@ -13,8 +13,8 @@ settings_dict = {
     'DATA_DIR': join(root_dir, 'Data'),
     'ia_file': join(root_dir, 'Data', 'network_training_data', 'IA.txt'),
     'ia_script': join(root_dir, 'utils', 'IC.py'),
-    'obo_file': join(root_dir, 'utils', 'go-basic.obo'),
-    'obo_pkl_file': join(root_dir, 'utils', 'obo.pkl'),
+    #'obo_file': join(root_dir, 'utils', 'go-basic.obo'),
+    #'obo_pkl_file': join(root_dir, 'utils', 'obo.pkl'),
 
     #'train_terms_tsv':  join(root_dir, 'Data', 'cafa5_raw_data', 'train_terms.tsv'),
     #'train_seqs_fasta': join(root_dir, 'Data', 'cafa5_raw_data', 'train_seq.fasta'),

@@ -1,275 +1,262 @@
 import os, argparse
-import multiprocessing as mp
 import torch
-import time
-import pandas as pd
+#from Bio import SeqIO
 import numpy as np
+import pickle
+import scipy.sparse as ssp
+import pandas as pd
+import multiprocessing as mp
 from tqdm import tqdm
-import pickle, shutil, json
+from torch.utils.data import DataLoader
+import math #, json
 
-from InterLabelGO_pred import InterLabelGO_pipeline
-from alignment_knn import AlignmentKNN
-from utils import obo_tools
+from Network.model import InterlabelGODataset, InterLabelResNet
+from Network.model_utils import Predictor
+#from utils.obo_tools import ObOTools
+from plm import PlmEmbed
 from settings import settings_dict as settings
-oboTools = obo_tools.ObOTools(
-    go_obo=settings['obo_file'],
-    obo_pkl=settings['obo_pkl_file']
-)
 
-def get_current_time():
-    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+# the following package is from local
+#from utils import obo_tools
+#oboTools = obo_tools.ObOTools(
+    #go_obo=settings['obo_file'],
+    #obo_pkl=settings['obo_pkl_file']
+#)V
 
-def record_time(func):
-    def wrapper(*args, **kwargs):
-        func_name = func.__name__
-        start_time = time.time()
-        print("start %s: %s" % (func_name, get_current_time()))
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        total_time = round(end_time - start_time, 2)
-        print("end %s: %s" % (func_name, get_current_time()))
-        print("Total time for %s: %s seconds" % (func_name, total_time))
-        print('----------------------------------------------------------------\n')
-        return result
-    return wrapper
-
-InterLabel_weight_dict = {'EC1': 0.94, 'EC2': 0.55, 'EC3': 0.76, 'EC4': 0.8} 
-
-# ZLPR_PTF1_GOF1
-a_weight_dict = {'EC1': 0.45, 'EC2': 0.45, 'EC3': 0.25, 'EC4': 0.45}
-k_weight_dict = {'EC1': 1.5,  'EC2': 4,    'EC3': 5,    'EC4': 6}
-
-
-
-class Main_pipeline:
-
+class InterLabelGO_pipeline:
     def __init__(self,
         working_dir:str,
         fasta_file:str,
-        num_threads:int=mp.cpu_count(),
+        pred_batch_size:int=512,
         device:str='cuda',
         top_terms:int=500, # number of top terms to be keeped in the prediction
-        aspects:list=['EC1', 'EC2', 'EC3', 'EC4'], # aspects of model
-        pred_batch_size:int=512,
-        InterLabel_min_weight:float=0.1,
-        no_align:bool=False,
-        no_dnn:bool=False,
+        aspects:list=['EC1', 'EC2', 'EC3', 'EC4'], # aspects to predict
         cache_dir:str=None,
-        seqid_combine:bool=False,
+        ## the following parameters should be fixed if you want to use the pretrained model
+        repr_layers:list=[34, 35, 36],
         embed_batch_size:int=4096, # note this might take around 15GB of vram, if you don't have enough vram, you can set this to 2048
-        # DO NOT MODIFY BELOW THIS LINE if you want to use the pretrained model
-        continue_from_last:bool=False,
-        alignment_database_dir:str=settings['alignment_db'],
-        alignment_labels_dir:str=settings['alignment_labels'],
+        embed_model_name:str="esm2_t36_3B_UR50D",
+        embed_model_path:str=settings['esm3b_path'],
+        include:list=['mean'],
         model_dir:str=settings['MODEL_CHECKPOINT_DIR'],
-    ):
+    ) -> None:
         self.working_dir = os.path.abspath(working_dir)
         self.fasta_file = os.path.abspath(fasta_file)
-        self.num_threads = num_threads
+        self.pred_batch_size = pred_batch_size
+        
+        if not torch.cuda.is_available():
+            device = 'cpu'
         self.device = device
         self.top_terms = top_terms
         self.aspects = aspects
-        self.pred_batch_size = pred_batch_size
-        self.embed_batch_size = embed_batch_size
-        self.no_align = no_align
-        self.no_dnn = no_dnn
         self.cache_dir = cache_dir
-        self.combine_tsv = os.path.join(self.working_dir, 'InterLabelGO+.tsv')
 
-        self.alignment_database_dir = alignment_database_dir
-        self.alignment_labels_dir = alignment_labels_dir
-        self.InterLabel_min_weight = InterLabel_min_weight
+        self.repr_layers = repr_layers
+        self.embed_model_name = embed_model_name
+        self.embed_model_path = embed_model_path
+        self.include = include
+        self.embed_batch_size = embed_batch_size
+
         self.model_dir = os.path.abspath(model_dir)
-        self.seqid_combine = seqid_combine
+        self.result_file = os.path.join(self.working_dir, 'InterLabelGO.tsv')
 
-        self.InterLabelGO_workdir = os.path.join(self.working_dir, 'InterLabelGO_pred')
-        self.AlignmentKNN_workdir = os.path.join(self.working_dir, 'AlignmentKNN_pred')
-        self.continue_from_last = continue_from_last
-        if not self.continue_from_last:
-            shutil.rmtree(self.InterLabelGO_workdir, ignore_errors=True)
-            shutil.rmtree(self.AlignmentKNN_workdir, ignore_errors=True)
-        if not os.path.exists(self.InterLabelGO_workdir):
-            os.makedirs(self.InterLabelGO_workdir)
-        if not os.path.exists(self.AlignmentKNN_workdir):
-            os.makedirs(self.AlignmentKNN_workdir)
 
-    @record_time
-    def InterLabelGO_pred(self):
-        InterLabelGO_pipeline(
-            working_dir=self.InterLabelGO_workdir,
+    def parse_fasta(self, fasta_file=None)->dict:
+        '''
+        parse fasta file
+
+        args:
+            fasta_file: fasta file path
+        return:
+            fasta_dict: fasta dictionary {id: sequence}
+        '''
+        if fasta_file is None:
+            fasta_file = self.fasta_file
+
+        #fasta_dict = {}
+        #for record in SeqIO.parse(fasta_file, 'fasta'):
+            #fasta_dict[record.id] = str(record.seq)
+        
+        fasta_dict=dict()
+        fp=open(fasta_file)
+        for block in ('\n'+fp.read()).split('\n>'):
+            if len(block.strip())==0:
+                continue
+            lines=block.splitlines()
+            header=lines[0]
+            sequence=''.join(lines[1:])
+            fasta_dict[header]=sequence
+        fp.close()
+        return fasta_dict  
+    
+    def get_embed_features(self):
+        Embed = PlmEmbed(
             fasta_file=self.fasta_file,
-            pred_batch_size=self.pred_batch_size,
-            device=self.device,
-            top_terms=self.top_terms,
-            embed_batch_size=self.embed_batch_size,
-            model_dir=self.model_dir,
-            aspects=self.aspects,
+            working_dir=self.working_dir,
+            repr_layers=self.repr_layers,
+            model_name=self.embed_model_name,
+            model_path=self.embed_model_path,
+            use_gpu=('cuda' in self.device),
+            include=self.include,
             cache_dir=self.cache_dir,
-        ).main()
-    
-    @record_time
-    def AlignmentKNN(self):
-        AlignmentKNN(
-            working_dir=self.AlignmentKNN_workdir,
+        )
+        print("Extracting embeding features")
+        Embed.extract(
             fasta_file=self.fasta_file,
-            Database_dir=self.alignment_database_dir,
-            Database_label=self.alignment_labels_dir,
-            num_threads=self.num_threads,
-            aspects=self.aspects,
-            continue_from_last=self.continue_from_last,
-        ).main()
+            model_name=self.embed_model_name,
+            model_path=self.embed_model_path,
+            use_gpu=('cuda' in self.device),
+            repr_layers=self.repr_layers,
+            include=self.include,
+            batch_size=self.embed_batch_size,
+            model_type='esm',
+            )
+        feature_dir = Embed.cache_dir
+        return feature_dir
     
-    @record_time
-    def combine_results(self, InterLabelGO_tsv, AlignmentKNN_tsv, max_seqid_tsv):
-        dnn = pd.read_csv(InterLabelGO_tsv, sep='\t')
+    def create_name_npy(self):
+        fasta_dict = self.parse_fasta(self.fasta_file)
+        name_npy_path = os.path.join(self.working_dir, 'names.npy')
+        names = np.array(list(fasta_dict.keys()))
+        np.save(name_npy_path, names)
+        return name_npy_path
 
-        align = pd.read_csv(AlignmentKNN_tsv, sep='\t')
-        seqid = pd.read_csv(max_seqid_tsv, sep='\t')
+    def predict(self, feature_dir:str):
+        name_npy_path = self.create_name_npy() # create working_dir/names.npy file for DataLoader
+        predictor = Predictor(
+            model=None,
+            PredictLoader=None,
+            device=self.device,
+            child_matrix=None,
+            back_prop=True,
+        )
+        PredictDataset = InterlabelGODataset(
+        features_dir=feature_dir,
+        names_npy=name_npy_path,
+        repr_layers=self.repr_layers,
+        labels_npy=None,# set to because we are doing inference
+        )
+        PredictLoader = DataLoader(PredictDataset, batch_size=self.pred_batch_size, shuffle=False, num_workers=0)
+        predictor.update_loader(PredictLoader)
 
-        with open(self.combine_tsv, 'w') as f:
-            colum_names = ['EntryID', 'term', 'score', 'max_seqid', 'aspect', 'go_term_name']
-            f.write('\t'.join(colum_names) + '\n')
-
+        result_file = self.result_file
+        #columns = ['EntryID','term','score','aspect', 'go_term_name']
+        columns = ['EntryID','term','score']
+        with open(result_file, 'w') as f:
+            f.write('\t'.join(columns))
+            f.write('\n')
+        seeds_dict = dict()
         for aspect in self.aspects:
-            # select current aspect
-            aspect_dnn = dnn[dnn['aspect'] == aspect]
-            aspect_align = align[align['aspect'] == aspect]
-            aspect_seqid = seqid[seqid['aspect'] == aspect]
-            # drop aspect columns
-            aspect_dnn = aspect_dnn.drop(columns=['aspect'])
-            aspect_align = aspect_align.drop(columns=['aspect'])
-            aspect_seqid = aspect_seqid.drop(columns=['aspect'])
-            # convert to dict
-            seqid_dict = dict(zip(aspect_seqid['EntryID'], aspect_seqid['max_seqid']))
+            aspect_model_dir = os.path.join(self.model_dir,aspect)
+            if not os.path.exists(aspect_model_dir):
+                print(f'No model found for {aspect} at {aspect_model_dir}')
+                continue
+            models = os.listdir(aspect_model_dir)
+            models = [os.path.join(aspect_model_dir, model) for model in models if model.endswith('.pt')]
 
-            # only keep EntryID, term, score
-            aspect_dnn = aspect_dnn[['EntryID', 'term', 'score']]
-            aspect_align = aspect_align[['EntryID', 'term', 'score']]
+            if len(models) == 0:
+                print(f"No model found in {aspect_model_dir}")
+                continue
+            child_matrix = ssp.load_npz(os.path.join(aspect_model_dir, 'child_matrix_ssp.npz')).toarray()
+            predictions = []
+            names = None
+            print(f"Predicting {aspect}")
 
-            # merge dnn, align
-            merged_df = pd.merge(aspect_dnn, aspect_align,on=['EntryID', 'term'], how='outer', suffixes=('_dnn', '_align'))
+            # # only use one model for now
+            # models = models[:1]
 
-            # merged_df['score_dnn'].fillna(0, inplace=True)
-            # merged_df['score_align'].fillna(0, inplace=True)
-            merged_df = merged_df.fillna({'score_dnn': 0, 'score_align': 0})
+            for model_path in tqdm(models, desc=f'generate {aspect} prediction', ascii=' >='):
+                model = InterLabelResNet.load_config(model_path)
+                seed = model.seed
+                if aspect not in seeds_dict:
+                    seeds_dict[aspect] = {}
+                seeds_dict[aspect][model_path] = seed
+                # # save model again
+                # model.save_config(model_path)
+                model = model.to(self.device)
+                predictor.update_model(model,child_matrix)
+                predictor.back_prop = False
+                protein_ids, y_preds = predictor.predict()
+                predictions.append(y_preds)
+                if names is None:
+                    names = protein_ids
 
-            # extract all scores
-            entry_ids = merged_df['EntryID'].values
-            score_dnn = merged_df['score_dnn'].values
-            score_align = merged_df['score_align'].values
+            predictions = sum(predictions)/len(predictions)
 
-            args = zip(entry_ids, score_dnn, score_align)
-            scores =[]
-            for arg in args:
-                scores.append(self.combine_score(arg,aspect=aspect, seqid_dict=seqid_dict, seqid_combine=self.seqid_combine))
-            merged_df['score'] = scores
-            merged_df = self.parent_propagation(merged_df)
-            merged_df['aspect'] = aspect
-            
-            # only keep EntryID, aspect, term, score
-            merged_df = merged_df[merged_df['score'] >= 0.01]
-            merged_df['max_seqid'] = merged_df['EntryID'].map(seqid_dict)
-            merged_df = merged_df[['EntryID', 'term', 'score', 'max_seqid', 'aspect']]
-            # round the score to 3 decimal places
-            merged_df['score'] = merged_df['score'].apply(lambda x: round(x, 3))
-            merged_df['max_seqid'] = merged_df['max_seqid'].apply(lambda x: round(x, 3))
-            # sort by EntryID, aspect, score
-            merged_df = merged_df.sort_values(['EntryID', 'aspect','score'], ascending=[True, True, False])
+            term_list = model.go_term_list
+
+            # convert to dataframe
+            df = pd.DataFrame(predictions, columns=term_list, index=names)
+            df = df.stack().reset_index()
+            df.columns = ['EntryID', 'term', 'score']
+            #df = self.parent_propagation(df)
+            df = df[df['score'] > 0.001]
+            # sort by name then score
+            df = df.sort_values(by=['EntryID','score'], ascending=[True, False])
+            df = df.sort_values(by=['EntryID','score'], ascending=[True, False])
+            df['aspect'] = aspect
+
             # only keep the top 500 terms
-            merged_df = merged_df.groupby(['EntryID', 'aspect']).head(self.top_terms)
-            merged_df['go_term_name'] = merged_df['term'].apply(lambda x: oboTools.goID2name(x))
-            merged_df.to_csv(self.combine_tsv, sep='\t', index=False, mode='a', header=False)
+            df = df.groupby(['EntryID', 'aspect']).head(self.top_terms)
+            df = df[['EntryID', 'term', 'score', 'aspect']]
+            #df['go_term_name'] = df['term'].apply(lambda x: oboTools.goID2name(x))
+            # write to tsv file
+            df.to_csv(result_file, index=False, sep='\t', mode='a', header=False)
+            #print(seeds_dict)
 
     def parent_propagation(self, df: pd.DataFrame):
         '''
-        Propagate the prediction to the parent terms
+        propagate the prediction to the parent terms
         df.columns = ['EntryID', 'term', 'score']
         '''
-        # Convert to a pivot table
-        pivot_df = df.pivot(index='EntryID', columns='term', values='score')
+        # Convert to dict, where key is the EntryID, value dict of term and score
+        df_dict = df.groupby('EntryID').apply(lambda x: x.set_index('term')['score'].to_dict()).to_dict()
         
-        # Apply backprop_cscore to each row
-        result = pivot_df.apply(lambda row: pd.Series(oboTools.backprop_cscore(row.to_dict(), min_cscore=0.001)), axis=1)
+        # Propagate the prediction to the parent terms
+        result_dict = {}
+        for EntryID, term_score in tqdm(df_dict.items(), desc='propagate prediction', ascii=' >='):
+            #result_dict[EntryID] = oboTools.backprop_cscore(term_score, min_cscore=0.001)
+            result_dict[EntryID] = term_score
         
-        # Reset the index and melt the DataFrame back to long format
-        result_df = result.reset_index().melt(id_vars='EntryID', var_name='term', value_name='score')
+        # Convert back to dataframe
+        rows = []
+        for EntryID, terms_scores in result_dict.items():
+            for term, score in terms_scores.items():
+                rows.append({'EntryID': EntryID, 'term': term, 'score': score})
         
-        # Remove rows where score is NaN (terms not present for that EntryID)
-        result_df = result_df.dropna(subset=['score'])
-        
+        result_df = pd.DataFrame(rows)
         return result_df
+        
 
-    def combine_score(self, args, aspect:str=None, seqid_dict:dict=None, seqid_combine:bool=False):
-        entry_id, score_dnn, score_align = args
-
-        if not seqid_combine:
-            score = score_dnn * InterLabel_weight_dict[aspect] + score_align * (1 - InterLabel_weight_dict[aspect])
-            return score
-    
-        dnn_weight = 0.5
-        seqid = seqid_dict.get(entry_id, 0.01)
-        #score = score_dnn * (dnn_weight/ (dnn_weight + seqid)) + score_align * (seqid / (dnn_weight + seqid))
-        # a = 0.33
-        # k = 3
-        a = a_weight_dict[aspect]
-        k = k_weight_dict[aspect]
-        w = a + (1 - a) * np.exp(-k * seqid)
-        score = score_dnn * w + score_align * (1 - w)
-        return score
- 
     def main(self):
-        if not self.no_dnn:
-            self.InterLabelGO_pred()
-            pass
-        if not self.no_align:
-            self.AlignmentKNN()
-            pass
-        if not self.no_dnn and not self.no_align:
-            AlignmentKNN_tsv=os.path.join(self.AlignmentKNN_workdir, 'AlignmentKNN.tsv')
-            max_seqid_tsv = os.path.join(self.AlignmentKNN_workdir, 'seqid.tsv')
-            InterLabelGO_tsv=os.path.join(self.InterLabelGO_workdir, 'InterLabelGO.tsv')
-            print('combining results...')
-            self.combine_results(InterLabelGO_tsv, AlignmentKNN_tsv, max_seqid_tsv)
-            # cp interlabel results into
-            #shutil.copy(InterLabelGO_tsv, os.path.join(self.working_dir, 'InterLabelGO.tsv'))
+        feature_dir = self.get_embed_features()
+        self.predict(feature_dir)
 
 
-if __name__ == "__main__":
-    parser= argparse.ArgumentParser()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    # example usage: python InterLabelGO_pred.py -w example -f example/example.fasta --use_gpu
     parser.add_argument('-w', '--working_dir', type=str, help='working directory', required=True)
     parser.add_argument('-f', '--fasta_file', type=str, help='fasta file', required=True)
-    parser.add_argument('-t', '--num_threads', type=int, help='number of threads', default=mp.cpu_count())
     parser.add_argument('-top', '--top_terms', type=int, help='number of top terms to be keeped in the prediction', default=500)
-    parser.add_argument('-m','--model_dir', type=str, default=settings['MODEL_CHECKPOINT_DIR'], help='directory to saved models')
-    parser.add_argument("-c", "--continue_from_last", help="continue from the last unfinished file", action="store_true")
+    parser.add_argument('-m', '--model_dir', type=str, help='model directory', default=settings['MODEL_CHECKPOINT_DIR'])
+    parser.add_argument('--esm_path', type=str, help='esm model path', default=settings['esm3b_path'])
     parser.add_argument('--use_gpu', action='store_true', help='use gpu')
-    parser.add_argument('--no_align', action='store_true', help='do not perform alignment')
-    parser.add_argument('--no_dnn', action='store_true', help='do not perform dnn prediction')
-    parser.add_argument('--aspect', type=str, nargs='+', default=['EC1', 'EC2', 'EC3', 'EC4'], choices=['EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to predict')
-    parser.add_argument('--cache', type=str, default=None, help='cache dir that store precomputed embeddings')
-    parser.add_argument('--seqid', action='store_true', help='use seqid to combine results')
+    parser.add_argument('--aspect', type=str, nargs='+', default=['EC'], choices=['EC','EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to predict')
+    parser.add_argument('--cache_dir', type=str, help='cache directory', default=None)
     args = parser.parse_args()
     working_dir = os.path.abspath(args.working_dir)
     fasta_file = os.path.abspath(args.fasta_file)
-    cache = os.path.abspath(args.cache) if args.cache is not None else None
-
-    if args.use_gpu and torch.cuda.is_available():
-        device = 'cuda'
-    else:
-        device = 'cpu'
-
-    Main_pipeline(
+    model_dir = os.path.abspath(args.model_dir)
+    esm_path = os.path.abspath(args.esm_path)
+    device = 'cuda' if args.use_gpu else 'cpu'
+    InterLabelGO_pipeline(
         working_dir=working_dir,
         fasta_file=fasta_file,
-        num_threads=args.num_threads,
         device=device,
         top_terms=args.top_terms,
-        model_dir=args.model_dir,
-        no_align=args.no_align,
-        no_dnn=args.no_dnn,
         aspects=args.aspect,
-        cache_dir=cache,
-        seqid_combine=args.seqid,
-        continue_from_last=args.continue_from_last
+        model_dir=model_dir,
+        embed_model_path=esm_path,
+        cache_dir=args.cache_dir,
     ).main()
-
