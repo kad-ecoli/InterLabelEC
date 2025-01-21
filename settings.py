@@ -59,6 +59,7 @@ training_config = {
 }
 
 add_res_dict = {
+    'EC' :True,
     'EC1':True,
     'EC2':True,
     'EC3':True,

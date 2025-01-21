@@ -39,8 +39,8 @@ class InterLabelLoss(nn.Module):
         crossentropy_loss = self.multilabel_categorical_crossentropy(y_pred, y_true)
         go_term_centric_loss = self.weight_go_centric_f1_loss(sig_y_pred, y_true, weight_tensor, mean='before', beta=beta)
         protein_centric_loss = self.weight_protein_centric_f1_loss(sig_y_pred, y_true, weight_tensor, mean='before', beta=beta)
-        total_loss = crossentropy_loss * protein_centric_loss * go_term_centric_loss
-        #total_loss = go_term_centric_loss * protein_centric_loss
+        #total_loss = crossentropy_loss * protein_centric_loss * go_term_centric_loss
+        total_loss = crossentropy_loss * torch.sqrt(protein_centric_loss) * go_term_centric_loss
         if print_loss:
             print('Crossentropy loss: {:.4f}, GO term loss: {:.4f}, Protein loss: {:.4f}, Total loss: {:.4f}'.format(crossentropy_loss.item(), go_term_centric_loss.item(), protein_centric_loss.item(), total_loss.item()))
         #crossentropy_loss1 = self.bce_loss(sig_y_pred, y_true)

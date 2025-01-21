@@ -242,7 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--model_dir', type=str, help='model directory', default=settings['MODEL_CHECKPOINT_DIR'])
     parser.add_argument('--esm_path', type=str, help='esm model path', default=settings['esm3b_path'])
     parser.add_argument('--use_gpu', action='store_true', help='use gpu')
-    parser.add_argument('--aspect', type=str, nargs='+', default=['EC1', 'EC2', 'EC3', 'EC4'], choices=['EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to predict')
+    parser.add_argument('--aspect', type=str, nargs='+', default=['EC'], choices=['EC','EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to predict')
     parser.add_argument('--cache_dir', type=str, help='cache directory', default=None)
     args = parser.parse_args()
     working_dir = os.path.abspath(args.working_dir)

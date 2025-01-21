@@ -293,6 +293,58 @@ def clust_split(seq_clust,    # list
         print(f"fold {n}: {len(train_idx)} training instance; {len(val_idx)} validation instance")
     return folds # train_idx, val_idx   # np.array
 
+def MultilabelStratifiedKFold_clust(
+    seq_clust,                # list of sequence cluster
+    aspect_train_seq_list,    # np.array
+    aspect_train_term_matrix, # N * terms
+    n_splits=5,               # number of folds
+    random_state=1234567890,  # random seed
+    ):
+
+    n_protein, n_term = aspect_train_term_matrix.shape
+    print(f"split {n_protein} protein and {n_term} EC into {n_splits} fold")
+
+    seq2idx =dict()
+    for idx,name in enumerate(aspect_train_seq_list):
+        seq2idx[name]=idx
+    
+    clust2prot    = []
+    for clust in seq_clust:
+        idx_list = [seq2idx[name] for name in clust if name in seq2idx]
+        if len(idx_list)==0:
+            continue
+        clust2prot.append(idx_list)
+    n_clust = len(clust2prot)
+    
+    print(f"stratify {n_clust} out of {len(seq_clust)} cluster")
+    aspect_clust_term_matrix = np.zeros((n_clust, n_term),dtype=int)
+    aspect_clust_seq_list = np.arange(n_clust)
+    for c,idx_list in enumerate(clust2prot):
+        aspect_clust_term_matrix[c,:]=(
+        aspect_train_term_matrix[idx_list,:].sum(axis=0)>0)
+
+    kf = MultilabelStratifiedKFold(n_splits=n_splits, 
+        random_state=random_state, shuffle=True)
+    clust_folds = kf.split(aspect_clust_seq_list, aspect_clust_term_matrix)
+
+    folds=[]
+    for i, (train_clust_idx, val_clust_idx) in enumerate(clust_folds):
+        train_idx = []
+        val_idx   = []
+        train_label = (aspect_train_term_matrix[train_clust_idx,:].sum(axis=0)>0)
+        val_label   = (aspect_train_term_matrix[  val_clust_idx,:].sum(axis=0)>0)
+        train_label_sum = sum(train_label)
+        val_label_sum   = sum(val_label)
+        overlap_label_sum = sum(train_label * val_label) 
+        print(f"fold {i}: {train_label_sum} training labels; {val_label_sum} validation labels; {overlap_label_sum} overlap labels; {n_term} total labels")
+        for c in train_clust_idx:
+            train_idx += clust2prot[c]
+        for c in val_clust_idx:
+            val_idx   += clust2prot[c]
+        folds.append(( np.array(train_idx), np.array(val_idx)))
+        print(f"fold {i}: expand {len(train_clust_idx)} cluster into {len(train_idx)} training instance; expand {len(val_clust_idx)} cluster into {len(val_idx)} validation instance")
+    return folds # train_idx, val_idx   # np.array
+
 def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
     make_alignment_db:bool=True, min_count_dict:dict=None, seed:int=1234567890, stratifi:bool=False,
     test_terms_tsv:str=None, test_seqs_fasta:str=None):
@@ -341,10 +393,11 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
         print(f'terms in EC4 aspect with terms frequency greater than {min_count_dict["EC4"]}: {len(selected_ec4_terms)}\n')
 
     selected_terms_by_aspect = {
-       'EC1': set(),
-       'EC2': set(),
-       'EC3': set(),
-       'EC4': set(),
+       'EC' : [],
+       'EC1': [],
+       'EC2': [],
+       'EC3': [],
+       'EC4': [],
     }
 
     get_aspect=dict()
@@ -355,7 +408,9 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
     fp.close()
     for term in selected_terms:
         aspect = get_aspect[term]
-        selected_terms_by_aspect[aspect].add(term)
+        selected_terms_by_aspect[aspect].append(term)
+        selected_terms_by_aspect['EC'].append(term)
+
 
     # topological sort the terms based on parent, child relationship
     #for k, v in selected_terms_by_aspect.items():
@@ -368,20 +423,27 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
         'EC3': list(sorted(train_terms[train_terms['aspect'] == 'EC3']['EntryID'].unique())),
         'EC4': list(sorted(train_terms[train_terms['aspect'] == 'EC4']['EntryID'].unique())),
     }
+    selected_entry_by_aspect['EC']  = list(sorted(train_terms['EntryID'].unique()))
+    selected_terms_by_aspect['EC']  = sorted(selected_terms_by_aspect['EC1']
+                                  ) + sorted(selected_terms_by_aspect['EC2']
+                                  ) + sorted(selected_terms_by_aspect['EC3']
+                                  ) + sorted(selected_terms_by_aspect['EC4'])
 
 
     # go2vec
     aspect_go2vec_dict = {
+        'EC' : dict(),
         'EC1': dict(),
         'EC2': dict(),
         'EC3': dict(),
         'EC4': dict(),
     }
-    for aspect in ['EC1', 'EC2', 'EC3', 'EC4']:
+    for aspect in aspect_go2vec_dict:
         for i, term in enumerate(selected_terms_by_aspect[aspect]):
             aspect_go2vec_dict[aspect][term] = i
 
     aspect_train_term_grouped_dict = {
+       'EC' : train_terms.reset_index(drop=True).groupby('EntryID')['term'].apply(set),
        'EC1': train_terms[train_terms['aspect'] == 'EC1'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
        'EC2': train_terms[train_terms['aspect'] == 'EC2'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
        'EC3': train_terms[train_terms['aspect'] == 'EC3'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
@@ -395,7 +457,7 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
     if test_terms_tsv is not None and test_seqs_fasta is not None:
         perpare_test(test_terms_tsv, test_seqs_fasta, Data_dir, selected_terms_by_aspect)
 
-    for aspect in ['EC1', 'EC2', 'EC3', 'EC4']:
+    for aspect in ['EC']:
         train_dir = os.path.join(out_dir, aspect)
         if not os.path.exists(train_dir):
             os.makedirs(train_dir)
@@ -420,9 +482,11 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
         #folds = kf.split(aspect_train_seq_list)
         
         folds = clust_split(seq_clust, aspect_train_seq_list, aspect_train_term_matrix, n_splits=5)
+        #folds = MultilabelStratifiedKFold_clust(seq_clust, aspect_train_seq_list,  
+            #aspect_train_term_matrix, n_splits=5, random_state=seed)
 
         for i, (train_idx, val_idx) in enumerate(folds):
-            print(f'creating {aspect} fold {i}...')
+            print(f'creating {aspect} fold {i}: {len(train_idx)} training; {len(val_idx)} validation')
             train_names = aspect_train_seq_list[train_idx]
             val_names = aspect_train_seq_list[val_idx]
             aspect_fold_train_label_npy = aspect_train_term_matrix[train_idx, :]
@@ -479,6 +543,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.Data_dir = os.path.abspath(args.Data_dir)
     min_count_dict = {
+        'EC' : args.min_ec,
         'EC1': args.min_ec,
         'EC2': args.min_ec,
         'EC3': args.min_ec,

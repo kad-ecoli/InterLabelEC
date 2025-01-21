@@ -56,6 +56,7 @@ def generate_pseudo_child_matrix(term_list:list[str]):
     
     Returns:
         child_matrix: the child matrix for the aspect where child_matrix[i][j] = 1 if the jth GO term is a subclass of the ith GO term else 0
+                      i is parent; j is child
     """
     
     training_terms = term_list
@@ -63,6 +64,13 @@ def generate_pseudo_child_matrix(term_list:list[str]):
     child_matrix = np.zeros((len(training_terms), len(training_terms)))
     # fill diagonal with 1
     np.fill_diagonal(child_matrix, 1)
+    for i,parent in enumerate(term_list):
+        parent=parent.rstrip('.-')+'.'
+        for j,child in enumerate(term_list):
+            if i==j:
+                continue
+            if child.startswith(parent):
+                child_matrix[i][j]=1
     return child_matrix
 
 def seed_everything(seed):
@@ -109,7 +117,7 @@ def main(
         model_dir:str=settings['MODEL_CHECKPOINT_DIR'],
         ia_file:str=settings['ia_file'],
         device:str='cuda', 
-        aspects:list=['EC1', 'EC2', 'EC3', 'EC4'],
+        aspects:list=['EC'],
         training_config:dict=training_config,
         add_res_dict:dict=add_res_dict,
     ):
@@ -233,7 +241,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_dir', type=str, default=settings['MODEL_CHECKPOINT_DIR'], help='directory to save models')
     parser.add_argument('--ia_file', type=str, default=settings['ia_file'], help='file containing the information content of GO terms')
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--aspects', type=str, nargs='+', default=['EC1', 'EC2', 'EC3', 'EC4'], choices=['EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to train')
+    parser.add_argument('--aspects', type=str, nargs='+', default=['EC'], choices=['EC', 'EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to train')
     
     args = parser.parse_args()
     args.train_data = os.path.abspath(args.train_data)
