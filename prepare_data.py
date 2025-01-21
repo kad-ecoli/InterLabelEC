@@ -481,9 +481,10 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
         #kf = KFold(n_splits=5, random_state=seed, shuffle=True)
         #folds = kf.split(aspect_train_seq_list)
         
-        folds = clust_split(seq_clust, aspect_train_seq_list, aspect_train_term_matrix, n_splits=5)
-        #folds = MultilabelStratifiedKFold_clust(seq_clust, aspect_train_seq_list,  
-            #aspect_train_term_matrix, n_splits=5, random_state=seed)
+        #folds = clust_split(seq_clust, aspect_train_seq_list, aspect_train_term_matrix, n_splits=5)
+        
+        folds = MultilabelStratifiedKFold_clust(seq_clust, aspect_train_seq_list,  
+            aspect_train_term_matrix, n_splits=5, random_state=seed)
 
         for i, (train_idx, val_idx) in enumerate(folds):
             print(f'creating {aspect} fold {i}: {len(train_idx)} training; {len(val_idx)} validation')
