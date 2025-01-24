@@ -38,13 +38,13 @@ wget -P $save_path $regression_url
 
 This will download the ESM2 models into `Data/esm_models`.
 
-To update the current GOA database, run:
+To convert the format of the current EC database, run:
 
 ```bash
 ./conda/bin/python update_data.py
 ```
 
-This will download the latest GOA database and convert it into the required format.
+This will convert the EC database into the required format.
 
 ## Data Processing
 
