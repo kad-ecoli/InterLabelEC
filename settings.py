@@ -30,11 +30,9 @@ settings_dict = {
     'tmp_dir': join(root_dir, 'Data', 'tmp'),
 
     'TRAIN_DATA_CLEAN_DIR': join(root_dir, 'Data', 'network_training_data'),
-    'TRAIN_DATA_SMALL_DIR': join(root_dir, 'Data', 'network_trainsmall_data'),
     'alignment_db': join(root_dir, 'Data', 'alignment_database'),
     'alignment_labels': join(root_dir, 'Data', 'alignment_labels'),
     'MODEL_CHECKPOINT_DIR': join(root_dir, 'models', 'ZLPR_PTF1_GOF1'),
-    'MODEL_SMALL_DIR': join(root_dir, 'models_small', 'ZLPR_PTF1_GOF1'),
     'LOGS_DIR': join(root_dir, 'logs'),
     'SUBMISSION_DIR': join(root_dir, 'submissions')
 }
@@ -59,9 +57,9 @@ training_config = {
 }
 
 add_res_dict = {
-    'EC' :True,
+    'EC' :False,
     'EC1':True,
-    'EC2':True,
-    'EC3':True,
-    'EC4':True,
+    'EC2':False,
+    'EC3':False,
+    'EC4':False,
 } # whether to add residual connections or not
