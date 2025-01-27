@@ -25,7 +25,7 @@ settings_dict = {
     'diamond_path': join(root_dir, 'utils', 'diamond'),
     'cdhit_path': join(root_dir, 'utils', 'cd-hit'),
 
-    'esm3b_path': join(root_dir, 'Data', 'esm_models', 'esm2_t36_3B_UR50D.pt'),
+    'esm3b_path': join(root_dir, 'Data', 'esm_models', 'esmc_600m_2024_12_v0.pth'),
     'embedding_dir': join(root_dir, 'Data', 'embeddings'),
     'tmp_dir': join(root_dir, 'Data', 'tmp'),
 
@@ -40,7 +40,8 @@ settings_dict = {
 training_config = {
     'activation':'gelu',
     'layer_list':[2048],
-    'embed_dim':2560,
+    #'embed_dim':2560,
+    'embed_dim':1152,
     'dropout':0.3,
     'epochs':200,
     'batch_size':512,

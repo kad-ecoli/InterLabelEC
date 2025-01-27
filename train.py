@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import random as rd
 import numpy as np
 import torch
@@ -10,7 +11,7 @@ import scipy.sparse as ssp
 from Network.model import InterlabelGODataset, InterLabelResNet
 from Network.model_utils import InterLabelLoss, EarlyStop, FmaxMetric, Trainer
 #import utils.obo_tools as obo_tools
-from plm import PlmEmbed
+#from plm import PlmEmbed
 from settings import settings_dict as settings
 from settings import training_config, add_res_dict
 
@@ -239,7 +240,7 @@ if __name__ == '__main__':
     parser.add_argument('--train_data', type=str, default=settings['TRAIN_DATA_CLEAN_DIR'], help='directory to save / saved network training data')
     parser.add_argument('--embed_feature', type=str, default=settings['embedding_dir'], help='directory to save / saved embed features')
     parser.add_argument('--model_dir', type=str, default=settings['MODEL_CHECKPOINT_DIR'], help='directory to save models')
-    parser.add_argument('--ia_file', type=str, default=settings['ia_file'], help='file containing the information content of GO terms')
+    parser.add_argument('--ia_file', type=str, default=settings['ia_file'], help='file containing the information content of EC numbers')
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--aspects', type=str, nargs='+', default=['EC'], choices=['EC', 'EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to train')
     

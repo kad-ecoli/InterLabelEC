@@ -18,6 +18,9 @@ def main():
         "4": "EC4",
     }
     # only grep exp data
+    rawdir=os.path.dirname(settings['train_ec_fasta'])
+    if not os.path.isdir(rawdir):
+        os.makedirs(rawdir)
     if not os.path.isfile(settings['train_ec_fasta']):
         print("ERROR! no such file "+settings['train_ec_fasta'])
         exit(1)
@@ -38,7 +41,7 @@ def main():
         header=lines[0].split()[0]
         sequence=''.join(lines[1:])
         totalN+=1
-        if len(sequence)<30 or len(sequence)>1024:
+        if len(sequence)<30 or len(sequence)>2048:
             continue
         seleN+=1
         seq_list.append((len(sequence),'>'+header+'\n'+sequence+'\n'))
@@ -54,7 +57,7 @@ def main():
 
     #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.4 -M 5000 -n 2 -T 16 -g 1 -sc 1"
     #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.5 -M 5000 -n 2 -T 16 -g 1 -sc 1"
-    cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.6 -M 5000 -n 3 -T 16 -g 1 -sc 1"
+    cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.6 -M 5000 -n 4 -T 16 -g 1 -sc 1"
     #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.7 -M 5000 -n 4 -T 16 -g 1 -sc 1"
     #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.8 -M 5000 -n 5 -T 16 -g 1 -sc 1"
     print(cmd)

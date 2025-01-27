@@ -151,14 +151,14 @@ class Residual(nn.Module):
 
 class InterLabelResNet(nn.Module):
     def __init__(self, 
-        aspect:str=None, # aspect of the GO terms
+        aspect:str=None, # aspect of the EC numbers
         layer_list:list=[1024], # layers of dnn network, example [512, 256, 128]
-        embed_dim:int=2560, # dim of the embedding protein language model
-        go_term_list:List[str]=[], # list of GO terms for prediction
+        embed_dim:int=1152, # dim of the embedding protein language model
+        go_term_list:List[str]=[], # list of EC numbers for prediction
         dropout:float=0.3, # dropout rate
         activation:str='elu', # activation function
-        seed:int=42, # random seed
-        prediction_mode:bool=False, # if True, the model will output the prediction of the GO terms
+        seed:int=1234567890, # random seed
+        prediction_mode:bool=False, # if True, the model will output the prediction of the EC numbers
         add_res:bool=False,
         ):
         super(InterLabelResNet, self).__init__()

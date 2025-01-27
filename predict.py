@@ -13,7 +13,8 @@ import math #, json
 from Network.model import InterlabelGODataset, InterLabelResNet
 from Network.model_utils import Predictor
 #from utils.obo_tools import ObOTools
-from plm import PlmEmbed
+#from plm import PlmEmbed
+from fasta2plm import fasta2esm
 from settings import settings_dict as settings
 
 # the following package is from local
@@ -35,7 +36,7 @@ class InterLabelGO_pipeline:
         ## the following parameters should be fixed if you want to use the pretrained model
         repr_layers:list=[34, 35, 36],
         embed_batch_size:int=4096, # note this might take around 15GB of vram, if you don't have enough vram, you can set this to 2048
-        embed_model_name:str="esm2_t36_3B_UR50D",
+        embed_model_name:str="esmc_600m_2024_12_v0",
         embed_model_path:str=settings['esm3b_path'],
         include:list=['mean'],
         model_dir:str=settings['MODEL_CHECKPOINT_DIR'],
@@ -58,7 +59,7 @@ class InterLabelGO_pipeline:
         self.embed_batch_size = embed_batch_size
 
         self.model_dir = os.path.abspath(model_dir)
-        self.result_file = os.path.join(self.working_dir, 'InterLabelGO.tsv')
+        self.result_file = os.path.join(self.working_dir, 'InterLabelEC.tsv')
 
 
     def parse_fasta(self, fasta_file=None)->dict:
@@ -90,28 +91,31 @@ class InterLabelGO_pipeline:
         return fasta_dict  
     
     def get_embed_features(self):
-        Embed = PlmEmbed(
-            fasta_file=self.fasta_file,
-            working_dir=self.working_dir,
-            repr_layers=self.repr_layers,
-            model_name=self.embed_model_name,
-            model_path=self.embed_model_path,
-            use_gpu=('cuda' in self.device),
-            include=self.include,
-            cache_dir=self.cache_dir,
-        )
+        #Embed = PlmEmbed(
+            #fasta_file=self.fasta_file,
+            #working_dir=self.working_dir,
+            #repr_layers=self.repr_layers,
+            #model_name=self.embed_model_name,
+            #model_path=self.embed_model_path,
+            #use_gpu=('cuda' in self.device),
+            #include=self.include,
+            #cache_dir=self.cache_dir,
+        #)
         print("Extracting embeding features")
-        Embed.extract(
-            fasta_file=self.fasta_file,
-            model_name=self.embed_model_name,
-            model_path=self.embed_model_path,
-            use_gpu=('cuda' in self.device),
-            repr_layers=self.repr_layers,
-            include=self.include,
-            batch_size=self.embed_batch_size,
-            model_type='esm',
-            )
-        feature_dir = Embed.cache_dir
+        #Embed.extract(
+            #fasta_file=self.fasta_file,
+            #model_name=self.embed_model_name,
+            #model_path=self.embed_model_path,
+            #use_gpu=('cuda' in self.device),
+            #repr_layers=self.repr_layers,
+            #include=self.include,
+            #batch_size=self.embed_batch_size,
+            #model_type='esm',
+            #)
+        #feature_dir = Embed.cache_dir
+        #return feature_dir
+        feature_dir = os.path.join(self.working_dir, "embed_feature")
+        fasta2esm(self.fasta_file, feature_dir)
         return feature_dir
     
     def create_name_npy(self):

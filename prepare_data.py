@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import pandas as pd
 import os, sys, subprocess, argparse
 import numpy as np
@@ -6,7 +7,7 @@ from sklearn.model_selection import KFold
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 import shutil
 
-from plm import PlmEmbed
+from fasta2plm import extract_embeddings
 from settings import settings_dict as settings
 
 docstring = """
@@ -503,26 +504,7 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
             np.save(os.path.join(train_dir, f'{aspect}_train_names_fold{i}.npy'), train_names)
             np.save(os.path.join(train_dir, f'{aspect}_valid_names_fold{i}.npy'), val_names)
         print(f'{aspect} done\n')            
-
-
-def extract_embeddings(train_seq_fasta:str):
-    """extract esm embeddings from the training sequences fasta file
-
-    Args:
-        train_seq_fasta (str): path to the fasta file of the training sequences
-    """
-    plm = PlmEmbed(
-        fasta_file=train_seq_fasta,
-        working_dir=settings['tmp_dir'],
-        cache_dir=settings['embedding_dir'],
-        model_path=settings['esm3b_path'],
-    )
-    plm.extract(
-        include=['mean'],
-    )
-    # remove tmp dir
-    if os.path.exists(settings['tmp_dir']):
-        shutil.rmtree(settings['tmp_dir'], ignore_errors=True)
+    return
 
 
 if __name__ == "__main__":
@@ -534,12 +516,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--Data_dir', type=str, default=settings['DATA_DIR'], help='path to the directory of the data')
     parser.add_argument('--make_db', action='store_true', help='whether to make the alignment database')
     parser.add_argument('--min_ec',  type=int, default=10, help='minimum number instances of EC number')
-    #parser.add_argument('--min_ec1', type=int, default=10, help='minimum number instances of EC number (digit 1)')
-    #parser.add_argument('--min_ec2', type=int, default=10, help='minimum number instances of EC number (digit 2)')
-    #parser.add_argument('--min_ec3', type=int, default=10, help='minimum number instances of EC number (digit 3)')
-    #parser.add_argument('--min_ec4', type=int, default=10, help='minimum number instances of EC number (digit 4)')
     parser.add_argument('--seed', type=int, default=1234567890)
-    parser.add_argument('--ia', action='store_true', help='whether to calculate ia, the iA.txt would store under the Data_dir')
     parser.add_argument('--stratifi', action='store_true', help='whether to use stratified multi-label in kfold')
     args = parser.parse_args()
     args.Data_dir = os.path.abspath(args.Data_dir)
@@ -580,8 +557,8 @@ if __name__ == "__main__":
     stratifi = args.stratifi
     main(train_terms_tsv, train_seqs_fasta, Data_dir, make_alignment_db, min_count_dict, seed, stratifi, test_terms_tsv, test_seqs_fasta)
 
-    if args.ia:
-        ia_file = settings['ia_file']
+    ia_file = settings['ia_file']
+    if not os.path.isfile(ia_file):
         ia_script = settings['ia_script']
         cmd = f"python {ia_script} {train_terms_tsv} {ia_file}"
         print('Creating IA.txt...')

@@ -26,7 +26,7 @@ class InterLabelLoss(nn.Module):
         Args:
             y_pred (_type_): predictions, no sigmoid
             y_true (_type_): ground truth
-            weight_tensor (_type_, optional): GO term's information contect for weighting. Defaults to None.
+            weight_tensor (_type_, optional): EC number's information contect for weighting. Defaults to None.
             aspect (_type_, optional): Aspect of the model. Defaults to None.
             print_loss (bool, optional): Whether to print loss. Defaults to False.
             beta (float, optional): beta value for f1_score. Defaults to 1.0.
@@ -42,7 +42,7 @@ class InterLabelLoss(nn.Module):
         #total_loss = crossentropy_loss * protein_centric_loss * go_term_centric_loss
         total_loss = crossentropy_loss * torch.sqrt(protein_centric_loss) * go_term_centric_loss
         if print_loss:
-            print('Crossentropy loss: {:.4f}, GO term loss: {:.4f}, Protein loss: {:.4f}, Total loss: {:.4f}'.format(crossentropy_loss.item(), go_term_centric_loss.item(), protein_centric_loss.item(), total_loss.item()))
+            print('Crossentropy loss: {:.4f}, EC number loss: {:.4f}, Protein loss: {:.4f}, Total loss: {:.4f}'.format(crossentropy_loss.item(), go_term_centric_loss.item(), protein_centric_loss.item(), total_loss.item()))
         #crossentropy_loss1 = self.bce_loss(sig_y_pred, y_true)
         # if print_loss:
         #     print('Crossentropy loss: {:.4f}'.format(crossentropy_loss.item()))
@@ -323,7 +323,7 @@ class FmaxMetric:
 
         Args:
             y_pred (torch.tensor): prediction
-            child_matrix (torch.tensor): child matrix where child_matrix[i][j] = 1 if the jth GO term is a subclass of the ith GO term else 0
+            child_matrix (torch.tensor): child matrix where child_matrix[i][j] = 1 if the jth EC number is a subclass of the ith EC number else 0
             batch_size (int, optional): batch size for parent prop, if num of class is large, please lower the batch size for memory consideration. Defaults to 32.
 
         Returns:
@@ -588,7 +588,7 @@ class Predictor:
 
         Args:
             y_pred (torch.tensor): prediction
-            child_matrix (torch.tensor): child matrix where child_matrix[i][j] = 1 if the jth GO term is a subclass of the ith GO term else 0
+            child_matrix (torch.tensor): child matrix where child_matrix[i][j] = 1 if the jth EC number is a subclass of the ith EC number else 0
             batch_size (int, optional): batch size for parent prop, if num of class is large, please lower the batch size for memory consideration. Defaults to 32.
 
         Returns:

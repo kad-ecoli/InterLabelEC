@@ -51,7 +51,7 @@ This will convert the EC database into the required format.
 Run the following command:
 
 ```bash
-./conda/bin/python prepare_data.py --ia
+./conda/bin/python prepare_data.py
 ```
 
 This will:
