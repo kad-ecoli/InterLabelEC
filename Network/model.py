@@ -8,9 +8,9 @@ from typing import List, Union
 import multiprocessing as mp
 from tqdm import tqdm
 
-random.seed(42)
-np.random.seed(42)
-torch.manual_seed(42)
+random.seed(1234567890)
+np.random.seed(1234567890)
+torch.manual_seed(1234567890)
 
 class InterlabelGODataset(Dataset):
     def __init__(self,
@@ -115,9 +115,9 @@ class InterlabelGODatasetWindow(Dataset):
     def load_data(self):
         data_dict = {}
         for name, seq in self.fasta_dict.items():
-            # truncate the sequence to the first 1000 amino acids, because the esm model only accept 1000 amino acids
-            if len(seq) > 1000:
-                seq = seq[:1000]
+            # truncate the sequence to the first 2048 amino acids, because the esm model only accept 2048 amino acids
+            if len(seq) > 2048:
+                seq = seq[:2048]
             features = np.load(os.path.join(self.features_dir, name + '.npy'),allow_pickle=True).item()
             seq_len = len(seq)
             # create windows

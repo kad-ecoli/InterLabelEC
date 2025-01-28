@@ -45,7 +45,7 @@ training_config = {
     'num_models': 5,
     'patience':10,
     'min_epochs':20,
-    'seed':12,
+    'seed':1234567890,
     'repr_layers': [34, 35, 36],
     'log_interval':1,
     'eval_interval':1,
