@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 file_dir = os.path.dirname(os.path.realpath(__file__))
 from settings import settings_dict as settings

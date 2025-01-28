@@ -15,39 +15,6 @@ from Network.model_utils import InterLabelLoss, EarlyStop, FmaxMetric, Trainer
 from settings import settings_dict as settings
 from settings import training_config, add_res_dict
 
-# training_config = {
-#     'activation':'gelu',
-#     'layer_list':[2048],
-#     'embed_dim':2560,
-#     'dropout':0.3,
-#     'epochs':200,
-#     'batch_size':512,
-#     'pred_batch_size':8124*4,
-#     'learning_rate':0.001,
-#     'num_models': 5,
-#     'patience':10,
-#     'min_epochs':20,
-#     'seed':12,
-#     'repr_layers': [34, 35, 36],
-#     'log_interval':1,
-#     'eval_interval':1,
-#     'monitor': 'both',
-# }
-
-# # seed_dict = {
-# #     0: 80399,
-# #     1: 61392,
-# #     2: 13533,
-# #     3: 86992,
-# #     4: 70825,
-# # }
-
-
-#oboTools = obo_tools.ObOTools(
-    #go_obo=settings['obo_file'],
-    #obo_pkl=settings['obo_pkl_file']
-#)
-
 def generate_pseudo_child_matrix(term_list:list[str]):
     """
     Generate the child matrix for the aspect

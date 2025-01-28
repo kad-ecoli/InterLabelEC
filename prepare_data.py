@@ -12,7 +12,7 @@ from settings import settings_dict as settings
 
 docstring = """
 example usage:
-    python prepare_data.py -train Data/train_raw/train_terms.tsv -train_seqs Data/train_raw/train_seq.fasta -d Data --make_db --ia
+    python prepare_data.py -train Data/train_raw/train_terms.tsv -train_seqs Data/train_raw/train_seq.fasta -d Data --ia
 
 """
 
@@ -62,45 +62,6 @@ def prop_parents(df:pd.DataFrame)->pd.DataFrame:
     prop_df = pd.concat(aspect_df, axis=0)
     return prop_df
 
-
-def make_db(Data_dir:str, terms_df:pd.DataFrame, seq_dict:dict):
-    DatabaseDir = settings['alignment_db']
-    goa_dir = settings['alignment_labels']
-
-    if not os.path.exists(DatabaseDir):
-        os.makedirs(DatabaseDir)
-    if not os.path.exists(goa_dir):
-        os.makedirs(goa_dir)
-
-    for aspect in ['EC1', 'EC2', 'EC3', 'EC4']:
-        aspect_db_dir = os.path.join(DatabaseDir, aspect)
-        if not os.path.exists(aspect_db_dir):
-            os.makedirs(aspect_db_dir)
-        cur_aspect_df = terms_df[terms_df['aspect'] == aspect].copy()
-        # group by EntryID, apply set to term
-        cur_aspect_df = cur_aspect_df.groupby(['EntryID'])['term'].apply(set).reset_index()
-        # backprop parent
-        #cur_aspect_df['term'] = cur_aspect_df['term'].apply(lambda x: oboTools.backprop_terms(x))
-        cur_aspect_df['term'] = cur_aspect_df['term'].apply(lambda x: ','.join(x))
-        unique_entryids = set(cur_aspect_df['EntryID'].unique())
-        if len(unique_entryids) == 0:
-            raise Exception(f"Error: no {aspect} terms found in dataframe, please make sure aspect is one of EC1, EC2, EC3, EC4")        
-        # write to file
-        label_path = os.path.join(goa_dir, f'{aspect}_Term')
-        cur_aspect_df.to_csv(label_path, sep='\t', index=False, header=False)
-
-        aspect_fasta_path = os.path.join(aspect_db_dir, 'AlignmentKNN.fasta')
-        with open(aspect_fasta_path, 'w') as f:
-            for entryid in unique_entryids:
-                if entryid in seq_dict:
-                    f.write(f">{entryid}\n{seq_dict[entryid]}\n")
-                else:
-                    print(f"Warning: {entryid} not found in seq_dict, skip it", file=sys.stderr)
-        
-        # create and diamond_db
-        diamond_db_cmd = f'{settings["diamond_path"]} makedb --in {aspect_fasta_path} -d {os.path.join(aspect_db_dir, "AlignmentKNN")}'
-        print('creating diamond_db...')
-        subprocess.run(diamond_db_cmd, shell=True, check=True)       
 
 def goset2vec(goset:set, aspect_go2vec_dict:dict, fixed_len:bool=False):
     if fixed_len:
@@ -346,8 +307,8 @@ def MultilabelStratifiedKFold_clust(
         print(f"fold {i}: expand {len(train_clust_idx)} cluster into {len(train_idx)} training instance; expand {len(val_clust_idx)} cluster into {len(val_idx)} validation instance")
     return folds # train_idx, val_idx   # np.array
 
-def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
-    make_alignment_db:bool=True, min_count_dict:dict=None, seed:int=1234567890, stratifi:bool=False,
+def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, 
+    min_count_dict:dict=None, seed:int=1234567890, stratifi:bool=False,
     test_terms_tsv:str=None, test_seqs_fasta:str=None):
     """
     Main function to prepare the data for training the model.
@@ -372,10 +333,6 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, \
                 line.split(', >')[1].split('.')[0])
     fp.close()
 
-    if make_alignment_db:
-        make_db(Data_dir, train_terms, train_seq_dict)
-        print('database created\n')
-    
     if min_count_dict is not None:
         # filter out terms with less than min_count_dict
         ec1_terms_freq = train_terms[train_terms['aspect'] == 'EC1']['term'].value_counts()
@@ -514,7 +471,6 @@ if __name__ == "__main__":
     parser.add_argument("-test", "--test_terms_tsv", type=str, help="path to the tsv file of the test terms", default=None)
     parser.add_argument("-test_seqs", "--test_seqs_fasta", type=str, help="path to the fasta file of the test sequences", default=None)
     parser.add_argument('-d', '--Data_dir', type=str, default=settings['DATA_DIR'], help='path to the directory of the data')
-    parser.add_argument('--make_db', action='store_true', help='whether to make the alignment database')
     parser.add_argument('--min_ec',  type=int, default=10, help='minimum number instances of EC number')
     parser.add_argument('--seed', type=int, default=1234567890)
     parser.add_argument('--stratifi', action='store_true', help='whether to use stratified multi-label in kfold')
@@ -528,7 +484,6 @@ if __name__ == "__main__":
         'EC4': args.min_ec,
     }
     seed = args.seed
-    make_alignment_db = args.make_db
 
     if args.train_terms_tsv is not None:
         args.train_terms_tsv = os.path.abspath(args.train_terms_tsv)
@@ -555,7 +510,7 @@ if __name__ == "__main__":
 
     Data_dir = args.Data_dir
     stratifi = args.stratifi
-    main(train_terms_tsv, train_seqs_fasta, Data_dir, make_alignment_db, min_count_dict, seed, stratifi, test_terms_tsv, test_seqs_fasta)
+    main(train_terms_tsv, train_seqs_fasta, Data_dir, min_count_dict, seed, stratifi, test_terms_tsv, test_seqs_fasta)
 
     ia_file = settings['ia_file']
     if not os.path.isfile(ia_file):

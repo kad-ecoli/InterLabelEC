@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os, argparse
 import torch
 #from Bio import SeqIO
