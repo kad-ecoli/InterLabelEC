@@ -156,7 +156,7 @@ class InterLabelResNet(nn.Module):
         embed_dim:int=1152, # dim of the embedding protein language model
         go_term_list:List[str]=[], # list of EC numbers for prediction
         dropout:float=0.3, # dropout rate
-        activation:str='elu', # activation function
+        activation:str='gelu', # activation function
         seed:int=1234567890, # random seed
         prediction_mode:bool=False, # if True, the model will output the prediction of the EC numbers
         add_res:bool=False,
@@ -234,9 +234,9 @@ class InterLabelResNet(nn.Module):
         return nn.Sequential(*layers) # * is used to unpack the list for the nn.Sequential
 
     def forward(self, inputs):
-        x1 = inputs[:, :self.embed_dim]
-        x2 = inputs[:, self.embed_dim:2*self.embed_dim]
-        x3 = inputs[:, 2*self.embed_dim:]
+        #x1 = inputs[:, :self.embed_dim]
+        #x2 = inputs[:, self.embed_dim:2*self.embed_dim]
+        #x3 = inputs[:, 2*self.embed_dim:]
 
 
         # batch normalization for each branch

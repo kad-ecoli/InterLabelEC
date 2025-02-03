@@ -34,8 +34,7 @@ settings_dict = {
 
 training_config = {
     'activation':'gelu',
-    'layer_list':[2048],
-    #'embed_dim':2560,
+    'layer_list':[1024],
     'embed_dim':1152,
     'dropout':0.3,
     'epochs':200,
