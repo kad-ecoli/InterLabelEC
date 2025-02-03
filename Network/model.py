@@ -178,11 +178,15 @@ class InterLabelResNet(nn.Module):
         self.bn1 = nn.BatchNorm1d(embed_dim)
         self.bn2 = nn.BatchNorm1d(embed_dim)
         self.bn3 = nn.BatchNorm1d(embed_dim)
+        
+        self.bn  = nn.BatchNorm1d(3*embed_dim)
 
         # Define DNN branches
         self.branch1 = self._build_dnn_branch(embed_dim)
         self.branch2 = self._build_dnn_branch(embed_dim)
         self.branch3 = self._build_dnn_branch(embed_dim)
+        
+        self.branch  = self._build_dnn_branch(3*embed_dim)
         
         # concat dense layer
         self.concat_layer = nn.Sequential(
@@ -192,6 +196,12 @@ class InterLabelResNet(nn.Module):
             nn.BatchNorm1d((layer_list[-1])),
         )
 
+        self.concat_layer1 = nn.Sequential(
+            nn.Linear(layer_list[-1], (layer_list[-1])),
+            self.get_activation(activation),
+            nn.Dropout(dropout),
+            nn.BatchNorm1d((layer_list[-1])),
+        )
 
         if self.add_res:
             self.res = Residual(
@@ -231,16 +241,20 @@ class InterLabelResNet(nn.Module):
 
         # batch normalization for each branch
         #print(f"shape={x1.shape},{x2.shape},{x3.shape}")
-        x1 = self.bn1(x1)
-        x2 = self.bn2(x2)
-        x3 = self.bn3(x3)
 
-        x1 = self.branch1(x1)
-        x2 = self.branch2(x2)
-        x3 = self.branch3(x3)
+        #x1 = self.bn1(x1)
+        #x2 = self.bn2(x2)
+        #x3 = self.bn3(x3)
+        x  = self.bn(inputs)
 
-        x = torch.cat((x1, x2, x3), dim=1)
-        x = self.concat_layer(x)
+        #x1 = self.branch1(x1)
+        #x2 = self.branch2(x2)
+        #x3 = self.branch3(x3)
+        x  = self.branch(x)
+
+        #x = torch.cat((x1, x2, x3), dim=1)
+        #x = self.concat_layer(x)
+        x = self.concat_layer1(x)
 
         if self.add_res:
             x = self.res(x)
