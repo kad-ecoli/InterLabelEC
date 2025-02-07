@@ -513,7 +513,8 @@ if __name__ == "__main__":
     main(train_terms_tsv, train_seqs_fasta, Data_dir, min_count_dict, seed, stratifi, test_terms_tsv, test_seqs_fasta)
 
     ia_file = settings['ia_file']
-    if not os.path.isfile(ia_file):
+    #if not os.path.isfile(ia_file):
+    if True:
         ia_script = settings['ia_script']
         cmd = f"python {ia_script} {train_terms_tsv} {ia_file}"
         print('Creating IA.txt...')
