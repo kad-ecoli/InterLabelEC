@@ -193,7 +193,7 @@ class InterLabelGO_pipeline:
             # convert to dataframe
             df = pd.DataFrame(predictions, columns=term_list, index=names)
             df = df.stack().reset_index()
-            df.columns = ['EntryID', 'term', 'score']
+            df.columns = columns
             #df = self.parent_propagation(df)
             df = df[df['score'] > 0.001]
             # sort by name then score
@@ -203,10 +203,14 @@ class InterLabelGO_pipeline:
 
             # only keep the top 500 terms
             df = df.groupby(['EntryID', 'aspect']).head(self.top_terms)
-            df = df[['EntryID', 'term', 'score', 'aspect']]
+            df = df[columns]
             #df['go_term_name'] = df['term'].apply(lambda x: oboTools.goID2name(x))
             # write to tsv file
             df.to_csv(result_file, index=False, sep='\t', mode='a', header=False)
+
+            cmd=settings["parse_isa"]+' '+result_file+' '+result_file
+            print(cmd)
+            os.system(cmd)
             #print(seeds_dict)
 
     def parent_propagation(self, df: pd.DataFrame):

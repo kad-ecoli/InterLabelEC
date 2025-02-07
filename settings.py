@@ -19,6 +19,7 @@ settings_dict = {
     'train_terms_tsv':  join(root_dir, 'Data', 'ec_raw_data', 'train_terms.tsv'),
     'train_seqs_fasta': join(root_dir, 'Data', 'ec_raw_data', 'train_seq.fasta'),
     'cdhit_path': join(root_dir, 'utils', 'cd-hit'),
+    'parse_isa': join(root_dir, 'utils', 'parse_isa'),
 
     'esm3b_path': join(root_dir, 'Data', 'esm_models', 'esmc_600m_2024_12_v0.pth'),
     'embedding_dir': join(root_dir, 'Data', 'embeddings'),
