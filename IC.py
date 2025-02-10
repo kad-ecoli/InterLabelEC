@@ -63,14 +63,7 @@ def read_annotation(dbfile):
         ia_dict[ECnumber]=-log((1.+NumECnumber)/(1.+NumParent))*ln2log2
     return ia_dict,GOdict
 
-if __name__=="__main__":
-    if len(sys.argv)!=3:
-        sys.stderr.write(docstring)
-        exit()
-
-    dbfile  =sys.argv[1]
-    outfile =sys.argv[2]
-
+def IC(dbfile,outfile):
     ia_dict,GOdict=read_annotation(dbfile)
 
     txt=''
@@ -86,3 +79,13 @@ if __name__=="__main__":
     fp=open(outfile,'w')
     fp.write(txt)
     fp.close()
+    return
+
+if __name__=="__main__":
+    if len(sys.argv)!=3:
+        sys.stderr.write(docstring)
+        exit()
+
+    dbfile  =sys.argv[1]
+    outfile =sys.argv[2]
+    IC(dbfile,outfile)

@@ -7,6 +7,7 @@ import torch.nn as nn
 from typing import List, Union
 import multiprocessing as mp
 from tqdm import tqdm
+from settings import training_config
 
 random.seed(1234567890)
 np.random.seed(1234567890)
@@ -17,7 +18,7 @@ class InterlabelGODataset(Dataset):
         features_dir:str,
         names_npy:str,
         labels_npy:str=None,
-        repr_layers:list=[34, 35, 36],
+        repr_layers:list=training_config['repr_layers'],
         low_memory:bool=False,
     ):
 
@@ -103,7 +104,7 @@ class InterlabelGODatasetWindow(Dataset):
     def __init__(self,
         features_dir:str,
         fasta_dict:dict,
-        repr_layers:list=[34, 35, 36],
+        repr_layers:list=training_config['repr_layers'],
         window_size:int=50,
     ):
         self.features_dir = features_dir
@@ -179,14 +180,14 @@ class InterLabelResNet(nn.Module):
         self.bn2 = nn.BatchNorm1d(embed_dim)
         self.bn3 = nn.BatchNorm1d(embed_dim)
         
-        self.bn  = nn.BatchNorm1d(3*embed_dim)
+        self.bn  = nn.BatchNorm1d(len(training_config['repr_layers'])*embed_dim)
 
         # Define DNN branches
         self.branch1 = self._build_dnn_branch(embed_dim)
         self.branch2 = self._build_dnn_branch(embed_dim)
         self.branch3 = self._build_dnn_branch(embed_dim)
         
-        self.branch  = self._build_dnn_branch(3*embed_dim)
+        self.branch  = self._build_dnn_branch(len(training_config['repr_layers'])*embed_dim)
         
         # concat dense layer
         self.concat_layer = nn.Sequential(

@@ -12,7 +12,6 @@ settings_dict = {
     'root_dir': root_dir,
     'DATA_DIR': join(root_dir, 'Data'),
     'ia_file': join(root_dir, 'Data', 'network_training_data', 'IA.txt'),
-    'ia_script': join(root_dir, 'utils', 'IC.py'),
     
     'train_ec_tsv':     join(root_dir, 'Data', 'ec_raw_data', 'exp.ec.tsv'),
     'train_ec_fasta':   join(root_dir, 'Data', 'ec_raw_data', 'exp.ec.fasta'),

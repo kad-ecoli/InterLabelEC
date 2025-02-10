@@ -18,6 +18,7 @@ import os, sys
 import torch
 import numpy as np
 from settings import settings_dict as settings
+from settings import training_config
 from esm.models.esmc import ESMC
 from esm.sdk.api import ESMProtein, LogitsConfig
 from tqdm import tqdm
@@ -26,7 +27,7 @@ from tqdm import tqdm
 def fasta2esm(
         fasta_file,
         output_dir,
-        repr_layers:list=[34, 35, 36], # esmc-600m-2024-12 has 36 layers
+        repr_layers:list=training_config['repr_layers'], # esmc-600m-2024-12 has 36 layers
     ):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)

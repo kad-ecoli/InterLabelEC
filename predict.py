@@ -17,6 +17,8 @@ from Network.model_utils import Predictor
 #from plm import PlmEmbed
 from fasta2plm import fasta2esm
 from settings import settings_dict as settings
+from settings import training_config
+
 
 # the following package is from local
 #from utils import obo_tools
@@ -32,10 +34,10 @@ class InterLabelGO_pipeline:
         pred_batch_size:int=512,
         device:str='cuda',
         top_terms:int=500, # number of top terms to be keeped in the prediction
-        aspects:list=['EC1', 'EC2', 'EC3', 'EC4'], # aspects to predict
+        aspects:list=['EC'], # aspects to predict
         cache_dir:str=None,
         ## the following parameters should be fixed if you want to use the pretrained model
-        repr_layers:list=[34, 35, 36],
+        repr_layers:list=training_config['repr_layers'],
         embed_batch_size:int=4096, # note this might take around 15GB of vram, if you don't have enough vram, you can set this to 2048
         embed_model_name:str="esmc_600m_2024_12_v0",
         embed_model_path:str=settings['esm3b_path'],
