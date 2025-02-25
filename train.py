@@ -8,8 +8,9 @@ from torch.utils.data import DataLoader
 import pickle, argparse
 import scipy.sparse as ssp
 
-from Network.model import InterlabelGODataset, InterLabelResNet
-from Network.model_utils import InterLabelLoss, EarlyStop, FmaxMetric, Trainer
+from model import InterlabelGODataset, InterLabelResNet, InterLabelLoss, EarlyStop, FmaxMetric, Trainer
+#from Network.model import InterlabelGODataset, InterLabelResNet
+#from Network.model_utils import InterLabelLoss, EarlyStop, FmaxMetric, Trainer
 #import utils.obo_tools as obo_tools
 #from plm import PlmEmbed
 from settings import settings_dict as settings

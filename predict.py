@@ -11,11 +11,12 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 import math #, json
 
-from Network.model import InterlabelGODataset, InterLabelResNet
-from Network.model_utils import Predictor
+from model import InterlabelGODataset, InterLabelResNet, Predictor
+#from Network.model import InterlabelGODataset, InterLabelResNet
+#from Network.model_utils import Predictor
 #from utils.obo_tools import ObOTools
 #from plm import PlmEmbed
-from fasta2plm import fasta2esm
+from fasta2plm import fasta2esm,homolog2esm
 from settings import settings_dict as settings
 from settings import training_config
 
@@ -118,7 +119,8 @@ class InterLabelGO_pipeline:
         #feature_dir = Embed.cache_dir
         #return feature_dir
         feature_dir = os.path.join(self.working_dir, "embed_feature")
-        fasta2esm(self.fasta_file, feature_dir)
+        #fasta2esm(self.fasta_file, feature_dir)
+        homolog2esm(self.fasta_file, feature_dir, settings['db'])
         return feature_dir
     
     def create_name_npy(self):

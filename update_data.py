@@ -29,6 +29,29 @@ def main():
         print("ERROR! no such file "+settings['train_ec_tsv'])
         exit(1)
 
+    print("read active site from "+settings['train_ec_tsv'])
+    bs_dict=dict()
+    fp=open(settings['train_ec_tsv'])
+    for line in fp.read().splitlines():
+        if line.startswith('#'):
+            continue
+        items=line.split('\t')
+        target=items[0]
+        binding=items[4].replace('..',',')
+        act_site=items[5].replace('..',',')
+        if not binding and not act_site:
+            continue
+        bs_list=[]
+        if binding:
+            bs_list+=[int(s) for s in binding.split(',')]
+        if act_site:
+            bs_list+=[int(s) for s in act_site.split(',')]
+        if not target in bs_dict:
+            bs_dict[target]=bs_list
+        else:
+            bs_dict[target]+=bs_list
+
+
     print("prepare "+settings['train_seqs_fasta'])
     totalN=0
     seleN=0
@@ -39,16 +62,35 @@ def main():
         if not block.strip():
             continue
         lines=block.splitlines()
-        header=lines[0].split()[0]
+        target=lines[0].split()[0]
         sequence=''.join(lines[1:])
         totalN+=1
-        if len(sequence)<30 or len(sequence)>2048:
+        if len(sequence)<30:
             continue
+        if len(sequence)>2048:
+            if not target in bs_dict:
+                print("ERROR! "+target+" too long (L=%d) and lack site"%len(sequence))
+                continue
+            min_bs=min(bs_dict[target])-1
+            max_bs=max(bs_dict[target])-1
+            if max_bs-min_bs>=2048:
+                print("ERROR! "+target+" too long (L=%d), site=%d..%d"%(
+                    len(sequence),min_bs,max_bs))
+                continue
+            mid_bs = int((max_bs + min_bs ) / 2)
+            min_bs = mid_bs - 1024
+            if min_bs<0:
+                min_bs = 0
+            max_bs = min_bs + 2048
+            if max_bs >=len(sequence):
+                min_bs = len(sequence)-2048
+            print("WARNING! trim "+target+" from L=%d to L=2048"%(len(sequence)))
+            sequence=sequence[min_bs:(min_bs+2048)]
         seleN+=1
-        seq_list.append((len(sequence),'>'+header+'\n'+sequence+'\n'))
-        target_list.append(header)
+        seq_list.append((len(sequence),'>'+target+'\n'+sequence+'\n'))
+        target_list.append(target)
     fp.close()
-    seq_list.sort(reverse=True)
+    #seq_list.sort(reverse=True)
     target_set=set(target_list)
     print("writing %d out of %d sequence"%(seleN,totalN))
     txt=''.join([seq for L,seq in seq_list])
@@ -63,6 +105,16 @@ def main():
     #cmd=settings['cdhit_path']+" -i "+settings['train_seqs_fasta']+" -o "+settings['train_seqs_fasta']+".cdhit -c 0.8 -M 5000 -n 5 -T 16 -g 1 -sc 1"
     print(cmd)
     os.system(cmd)
+
+    cmd=settings['mmseqs']+' createdb '+settings['train_ec_fasta']+' '+settings['db']
+    print(cmd)
+    os.system(cmd)
+    if not os.path.isdir(settings['tmp_dir']):
+        os.makedirs(settings['tmp_dir'])
+    cmd=settings['mmseqs']+' createindex '+settings['db']+' '+settings['tmp_dir']
+    print(cmd)
+    os.system(cmd)
+
     
     print("prepare "+settings['train_terms_tsv'])
     line_list=[]

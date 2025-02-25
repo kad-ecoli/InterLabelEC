@@ -20,6 +20,10 @@ settings_dict = {
     'cdhit_path': join(root_dir, 'utils', 'cd-hit'),
     'parse_isa': join(root_dir, 'utils', 'parse_isa'),
 
+    'mmseqs': join(root_dir, 'utils/mmseqs/bin/mmseqs'),
+    'db':     join(root_dir,"Data/ec_raw_data/exp.ec"),
+    #'db':    join(root_dir,"Data/curated/uniref100"),
+
     'esm3b_path': join(root_dir, 'Data', 'esm_models', 'esmc_600m_2024_12_v0.pth'),
     'embedding_dir': join(root_dir, 'Data', 'embeddings'),
     'tmp_dir': join(root_dir, 'Data', 'tmp'),

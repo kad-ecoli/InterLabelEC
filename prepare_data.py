@@ -7,7 +7,7 @@ from sklearn.model_selection import KFold
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 import shutil
 
-from fasta2plm import extract_embeddings
+from fasta2plm import extract_homolog_embeddings,extract_embeddings
 from settings import settings_dict as settings
 from IC import IC
 
@@ -464,6 +464,43 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str,
         print(f'{aspect} done\n')            
     return
 
+def split_db(db:str):
+    out_dir = os.path.join(Data_dir, "network_training_data")
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    train_seq_dict = get_seq_dict(train_seqs_fasta)
+    n_splits=5
+    filename_list=[]
+    for aspect in ['EC']:
+        train_dir = os.path.join(out_dir, aspect)
+        for i in range(n_splits):
+            print(f'reading {aspect} train fold {i}')
+            train_names=np.load(os.path.join(train_dir, 
+                 f'{aspect}_train_names_fold{i}.npy'))
+            txt=''.join(['>'+name+'\n'+train_seq_dict[name]+'\n' \
+                    for name in train_names])
+            train_filename=os.path.join(train_dir,f'{aspect}_train_names_fold{i}')
+            fp=open(train_filename+".fasta",'w')
+            fp.write(txt)
+            fp.close()
+            cmd=settings['mmseqs']+' createdb '+train_filename+'.fasta '+train_filename
+            print(cmd)
+            os.system(cmd)
+
+            print(f'reading {aspect} valid fold {i}')
+            val_names=np.load(os.path.join(train_dir, 
+                 f'{aspect}_valid_names_fold{i}.npy'))
+            txt=''.join(['>'+name+'\n'+train_seq_dict[name]+'\n' \
+                    for name in val_names])
+            val_filename=os.path.join(train_dir,f'{aspect}_val_names_fold{i}')
+            fp=open(val_filename+".fasta",'w')
+            fp.write(txt)
+            fp.close()
+
+            filename_list.append((train_filename,val_filename))
+        print(f'{aspect} done\n')            
+    return filename_list
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -512,18 +549,16 @@ if __name__ == "__main__":
     Data_dir = args.Data_dir
     stratifi = args.stratifi
     main(train_terms_tsv, train_seqs_fasta, Data_dir, min_count_dict, seed, stratifi, test_terms_tsv, test_seqs_fasta)
-
     IC(train_terms_tsv, settings['ia_file'])
-    #ia_file = settings['ia_file']
-    #if not os.path.isfile(ia_file):
-    #if True:
-        #ia_script = settings['ia_script']
-        #cmd = f"python {ia_script} {train_terms_tsv} {ia_file}"
-        #print('Creating IA.txt...')
-        #subprocess.run(cmd, shell=True, check=True)
     
     # extract embeddings
     print('Extracting embeddings...')
-    extract_embeddings(train_seqs_fasta)
+    filename_list=split_db(train_seqs_fasta)
+    #for train_filename,val_filename in filename_list:
+        #extract_homolog_embeddings(val_filename+".fasta", train_filename)
+
+    extract_homolog_embeddings(train_seqs_fasta, settings['db'])
+    #extract_embeddings(train_seqs_fasta)
     if test_seqs_fasta is not None:
-        extract_embeddings(test_seqs_fasta)
+        extract_homolog_embeddings(test_seqs_fasta, settings['db'])
+        #extract_embeddings(test_seqs_fasta)
