@@ -43,7 +43,8 @@ class InterLabelGO_pipeline:
         embed_model_name:str="esmc_600m_2024_12_v0",
         embed_model_path:str=settings['esm3b_path'],
         include:list=['mean'],
-        model_dir:str=settings['MODEL_CHECKPOINT_DIR'],
+        model_dir:str=settings['MODEL_CHECKPOINT_DIR1'],
+        result_file:str='',
     ) -> None:
         self.working_dir = os.path.abspath(working_dir)
         self.fasta_file = os.path.abspath(fasta_file)
@@ -63,7 +64,9 @@ class InterLabelGO_pipeline:
         self.embed_batch_size = embed_batch_size
 
         self.model_dir = os.path.abspath(model_dir)
-        self.result_file = os.path.join(self.working_dir, 'InterLabelEC.tsv')
+        self.result_file = os.path.join(self.working_dir, 'DL.tsv')
+        if result_file:
+            self.result_file=result_file
 
 
     def parse_fasta(self, fasta_file=None)->dict:
@@ -245,6 +248,37 @@ class InterLabelGO_pipeline:
         feature_dir = self.get_embed_features()
         self.predict(feature_dir)
 
+def combine_result(working_dir:str):
+    target_list=[]
+    predict_dict=dict()
+    fp=open(os.path.join(working_dir,"DL2.tsv"))
+    for line in fp.read().splitlines():
+        items   =line.split('\t')
+        target  =items[0]
+        ECnumber=items[1]
+        if not target in predict_dict:
+            predict_dict[target]=''
+            target_list.append(target)
+        if ECnumber=='0.-.-.-':
+            predict_dict[target]+=line+'\n'
+    fp.close()
+    fp=open(os.path.join(working_dir,"DL1.tsv"))
+    for line in fp.read().splitlines():
+        items   =line.split('\t')
+        target  =items[0]
+        ECnumber=items[1]
+        if not target in predict_dict:
+            predict_dict[target]=''
+            target_list.append(target)
+        if ECnumber!='0.-.-.-':
+            predict_dict[target]+=line+'\n'
+    fp.close()
+
+    txt=''.join([predict_dict[target] for target in target_list])
+    fp=open(os.path.join(working_dir,"DL.tsv"),'w')
+    fp.write(txt)
+    fp.close()
+    return
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -252,24 +286,25 @@ if __name__ == '__main__':
     parser.add_argument('-w', '--working_dir', type=str, help='working directory', required=True)
     parser.add_argument('-f', '--fasta_file', type=str, help='fasta file', required=True)
     parser.add_argument('-top', '--top_terms', type=int, help='number of top terms to be keeped in the prediction', default=500)
-    parser.add_argument('-m', '--model_dir', type=str, help='model directory', default=settings['MODEL_CHECKPOINT_DIR'])
     parser.add_argument('--esm_path', type=str, help='esm model path', default=settings['esm3b_path'])
     parser.add_argument('--use_gpu', action='store_true', help='use gpu')
-    parser.add_argument('--aspect', type=str, nargs='+', default=['EC'], choices=['EC','EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to predict')
     parser.add_argument('--cache_dir', type=str, help='cache directory', default=None)
     args = parser.parse_args()
     working_dir = os.path.abspath(args.working_dir)
     fasta_file = os.path.abspath(args.fasta_file)
-    model_dir = os.path.abspath(args.model_dir)
-    esm_path = os.path.abspath(args.esm_path)
     device = 'cuda' if args.use_gpu else 'cpu'
-    InterLabelGO_pipeline(
-        working_dir=working_dir,
-        fasta_file=fasta_file,
-        device=device,
-        top_terms=args.top_terms,
-        aspects=args.aspect,
-        model_dir=model_dir,
-        embed_model_path=esm_path,
-        cache_dir=args.cache_dir,
-    ).main()
+    
+    for idx in ['1','2']:
+        result_file=os.path.join(working_dir,"DL"+idx+".tsv")
+        InterLabelGO_pipeline(
+            working_dir=working_dir,
+            fasta_file=fasta_file,
+            device=device,
+            top_terms=args.top_terms,
+            aspects=['EC'],
+            model_dir=settings['MODEL_CHECKPOINT_DIR'+idx],
+            cache_dir=args.cache_dir,
+            result_file=result_file,
+        ).main()
+    
+    combine_result(working_dir)

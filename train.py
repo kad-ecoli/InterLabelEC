@@ -81,10 +81,10 @@ def calculate_weight_matrix(term_list:list, vec2go_dict:dict, ia_dict:dict):
     return weigth_array
 
 def main(  
-        train_data_dir:str=settings['TRAIN_DATA_CLEAN_DIR'],
+        train_data_dir:str=settings['TRAIN_DATA_CLEAN_DIR1'],
         embed_feature_dir:str=settings['embedding_dir'],
-        model_dir:str=settings['MODEL_CHECKPOINT_DIR'],
-        ia_file:str=settings['ia_file'],
+        model_dir:str=settings['MODEL_CHECKPOINT_DIR1'],
+        ia_file:str=settings['ia_file1'],
         device:str='cuda', 
         aspects:list=['EC'],
         training_config:dict=training_config,
@@ -205,17 +205,11 @@ def main(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_data', type=str, default=settings['TRAIN_DATA_CLEAN_DIR'], help='directory to save / saved network training data')
     parser.add_argument('--embed_feature', type=str, default=settings['embedding_dir'], help='directory to save / saved embed features')
-    parser.add_argument('--model_dir', type=str, default=settings['MODEL_CHECKPOINT_DIR'], help='directory to save models')
-    parser.add_argument('--ia_file', type=str, default=settings['ia_file'], help='file containing the information content of EC numbers')
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--aspects', type=str, nargs='+', default=['EC'], choices=['EC', 'EC1', 'EC2', 'EC3', 'EC4'], help='aspects of model to train')
     
     args = parser.parse_args()
-    args.train_data = os.path.abspath(args.train_data)
     args.embed_feature = os.path.abspath(args.embed_feature)
-    args.model_dir = os.path.abspath(args.model_dir)
     
     if not torch.cuda.is_available():
         args.device = 'cpu'
@@ -223,11 +217,12 @@ if __name__ == '__main__':
     else:
         print("CUDA is available")
     
-    main(
-        train_data_dir=args.train_data,
-        embed_feature_dir=args.embed_feature,
-        model_dir=args.model_dir,
-        ia_file=args.ia_file,
-        device=args.device,
-        aspects=args.aspects,
-    )
+    for idx in ['1','2']:
+        main(
+            train_data_dir=settings['TRAIN_DATA_CLEAN_DIR'+idx],
+            embed_feature_dir=args.embed_feature,
+            model_dir=settings['MODEL_CHECKPOINT_DIR'+idx],
+            ia_file=settings['ia_file'+idx],
+            device=args.device,
+            aspects=['EC'],
+        )

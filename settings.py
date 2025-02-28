@@ -11,29 +11,31 @@ It contains all the default paths
 settings_dict = {
     'root_dir': root_dir,
     'DATA_DIR': join(root_dir, 'Data'),
-    'ia_file': join(root_dir, 'Data', 'network_training_data', 'IA.txt'),
+    'ia_file1': join(root_dir, 'Data', 'network_training_data1', 'IA.txt'),
+    'ia_file2': join(root_dir, 'Data', 'network_training_data2', 'IA.txt'),
     
     'train_ec_tsv':     join(root_dir, 'Data', 'ec_raw_data', 'exp.ec.tsv'),
     'train_ec_fasta':   join(root_dir, 'Data', 'ec_raw_data', 'exp.ec.fasta'),
-    'train_terms_tsv':  join(root_dir, 'Data', 'ec_raw_data', 'train_terms.tsv'),
-    'train_seqs_fasta': join(root_dir, 'Data', 'ec_raw_data', 'train_seq.fasta'),
+    'train_nonec_tsv':  join(root_dir, 'Data', 'ec_raw_data', 'exp.nonec.tsv'),
+    'train_nonec_fasta':join(root_dir, 'Data', 'ec_raw_data', 'exp.nonec.fasta'),
+    'train_terms1_tsv':  join(root_dir, 'Data', 'ec_raw_data', 'train_terms1.tsv'),
+    'train_terms2_tsv':  join(root_dir, 'Data', 'ec_raw_data', 'train_terms2.tsv'),
+    'train_seqs1_fasta': join(root_dir, 'Data', 'ec_raw_data', 'train_seq1.fasta'),
+    'train_seqs2_fasta': join(root_dir, 'Data', 'ec_raw_data', 'train_seq2.fasta'),
     'cdhit_path': join(root_dir, 'utils', 'cd-hit'),
     'parse_isa': join(root_dir, 'utils', 'parse_isa'),
 
     'mmseqs': join(root_dir, 'utils/mmseqs/bin/mmseqs'),
-    'db':     join(root_dir,"Data/ec_raw_data/exp.ec"),
-    #'db':    join(root_dir,"Data/curated/uniref100"),
+    'db':     join(root_dir,"Data/ec_raw_data/exp"),
 
     'esm3b_path': join(root_dir, 'Data', 'esm_models', 'esmc_600m_2024_12_v0.pth'),
     'embedding_dir': join(root_dir, 'Data', 'embeddings'),
     'tmp_dir': join(root_dir, 'Data', 'tmp'),
 
-    'TRAIN_DATA_CLEAN_DIR': join(root_dir, 'Data', 'network_training_data'),
-    'alignment_db': join(root_dir, 'Data', 'alignment_database'),
-    'alignment_labels': join(root_dir, 'Data', 'alignment_labels'),
-    'MODEL_CHECKPOINT_DIR': join(root_dir, 'models', 'ZLPR_PTF1_GOF1'),
-    'LOGS_DIR': join(root_dir, 'logs'),
-    'SUBMISSION_DIR': join(root_dir, 'submissions')
+    'TRAIN_DATA_CLEAN_DIR1': join(root_dir, 'Data', 'network_training_data1'),
+    'TRAIN_DATA_CLEAN_DIR2': join(root_dir, 'Data', 'network_training_data2'),
+    'MODEL_CHECKPOINT_DIR1': join(root_dir, 'models', 'enzyme'),
+    'MODEL_CHECKPOINT_DIR2': join(root_dir, 'models', 'nonenzyme'),
 }
 
 training_config = {

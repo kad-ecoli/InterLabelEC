@@ -2,6 +2,7 @@
 import pandas as pd
 import os, sys, subprocess, argparse
 import numpy as np
+import random
 import scipy.sparse as ssp
 from sklearn.model_selection import KFold
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
@@ -77,78 +78,6 @@ def goset2vec(goset:set, aspect_go2vec_dict:dict, fixed_len:bool=False):
         vec.append(aspect_go2vec_dict[go])
     vec = list(sorted(vec))
     return vec
-
-def perpare_test(test_terms_tsv:str, test_seqs_fasta:str, Data_dir:str, selected_terms_by_aspect:dict):
-    """
-    prepare the test data, this is mainly for the fine-tuning of precision and recall
-    estimation of the model.
-
-    Args:
-        test_terms_tsv (str): path to the tsv file of the test terms
-        test_seqs_fasta (str): path to the fasta file of the test sequences
-        Data_dir (str): path to the directory of the data
-        selected_terms_by_aspect (dict): dict of selected terms, key is aspect, value is a set of terms
-    """
-    test_seq_dict = get_seq_dict(test_seqs_fasta)
-    present_seqs = set(test_seq_dict.keys())
-    test_terms = pd.read_csv(test_terms_tsv, sep='\t')
-    test_terms = prop_parents(test_terms)
-    all_terms = set(selected_terms_by_aspect['EC1']
-            ) | set(selected_terms_by_aspect['EC2']
-            ) | set(selected_terms_by_aspect['EC3']
-            ) | set(selected_terms_by_aspect['EC4'])
-    test_terms = test_terms[test_terms['term'].isin(all_terms)]
-    test_terms = test_terms[test_terms['EntryID'].isin(present_seqs)]
-
-    selected_entry_by_aspect = {
-        'EC1': list(sorted(test_terms[test_terms['aspect'] == 'EC1']['EntryID'].unique())),
-        'EC2': list(sorted(test_terms[test_terms['aspect'] == 'EC2']['EntryID'].unique())),
-        'EC3': list(sorted(test_terms[test_terms['aspect'] == 'EC3']['EntryID'].unique())),
-        'EC4': list(sorted(test_terms[test_terms['aspect'] == 'EC4']['EntryID'].unique())),
-    }
-    print(f'number of proteins in EC1 aspect: {len(selected_entry_by_aspect["EC1"])}')
-    print(f'number of proteins in EC2 aspect: {len(selected_entry_by_aspect["EC2"])}')
-    print(f'number of proteins in EC3 aspect: {len(selected_entry_by_aspect["EC3"])}')
-    print(f'number of proteins in EC4 aspect: {len(selected_entry_by_aspect["EC4"])}')
-
-    # go2vec
-    aspect_go2vec_dict = {
-        'EC1': dict(),
-        'EC2': dict(),
-        'EC3': dict(),
-        'EC4': dict(),
-    }
-    for aspect in ['EC1', 'EC2', 'EC3', 'EC4']:
-        for i, term in enumerate(selected_terms_by_aspect[aspect]):
-            aspect_go2vec_dict[aspect][term] = i
-    
-    aspect_test_term_grouped_dict = {
-        'EC1': test_terms[test_terms['aspect'] == 'EC1'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
-        'EC2': test_terms[test_terms['aspect'] == 'EC2'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
-        'EC3': test_terms[test_terms['aspect'] == 'EC3'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
-        'EC4': test_terms[test_terms['aspect'] == 'EC4'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
-    }
-
-    out_dir = settings["TRAIN_DATA_CLEAN_DIR"]
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-    
-    for aspect in ['EC1', 'EC2', 'EC3', 'EC4']:
-        test_dir = os.path.join(out_dir, aspect)
-        if not os.path.exists(test_dir):
-            os.makedirs(test_dir)
-        
-        aspect_test_seq_list = selected_entry_by_aspect[aspect].copy()
-        aspect_test_seq_list = np.array(aspect_test_seq_list)
-        aspect_test_term_matrix = np.vstack([goset2vec(aspect_test_term_grouped_dict[aspect][entry], 
-            aspect_go2vec_dict[aspect], fixed_len=True) for entry in aspect_test_seq_list])
-        print(f'{aspect} label dim: {aspect_test_term_matrix.shape}')
-
-        # convert to sparse matrix
-        aspect_test_term_matrix = ssp.csr_matrix(aspect_test_term_matrix)
-
-        np.save(os.path.join(test_dir, f'{aspect}_test_names.npy'), aspect_test_seq_list)
-        ssp.save_npz(os.path.join(test_dir, f'{aspect}_test_labels.npz'), aspect_test_term_matrix)
 
 def find_restratifi_term(protein2fold,aspect_train_term_matrix,min_fold_num=2):
     ''' Find a list of terms belonging to only one fold'''
@@ -308,9 +237,8 @@ def MultilabelStratifiedKFold_clust(
         print(f"fold {i}: expand {len(train_clust_idx)} cluster into {len(train_idx)} training instance; expand {len(val_clust_idx)} cluster into {len(val_idx)} validation instance")
     return folds # train_idx, val_idx   # np.array
 
-def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str, 
-    min_count_dict:dict=None, seed:int=1234567890, stratifi:bool=False,
-    test_terms_tsv:str=None, test_seqs_fasta:str=None):
+def main(train_terms_tsv:str, train_seqs_fasta:str, out_dir:str, 
+    min_count_dict:dict=None, seed:int=1234567890):
     """
     Main function to prepare the data for training the model.
 
@@ -409,13 +337,6 @@ def main(train_terms_tsv:str, train_seqs_fasta:str, Data_dir:str,
        'EC4': train_terms[train_terms['aspect'] == 'EC4'].reset_index(drop=True).groupby('EntryID')['term'].apply(set),
     }
 
-    out_dir = os.path.join(Data_dir, "network_training_data")
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    if test_terms_tsv is not None and test_seqs_fasta is not None:
-        perpare_test(test_terms_tsv, test_seqs_fasta, Data_dir, selected_terms_by_aspect)
-
     for aspect in ['EC']:
         train_dir = os.path.join(out_dir, aspect)
         if not os.path.exists(train_dir):
@@ -501,17 +422,180 @@ def split_db(db:str):
         print(f'{aspect} done\n')            
     return filename_list
 
+def update_data():
+    """
+    Download the newest UNIPROT GOA file and preprocess to the csv and fasta
+    """
+    # only grep exp data
+    rawdir=os.path.dirname(settings['train_ec_fasta'])
+    if not os.path.isdir(rawdir):
+        os.makedirs(rawdir)
+    for filename in [settings['train_ec_tsv'],
+                     settings['train_nonec_tsv'],
+                     settings['train_ec_fasta'],
+                     settings['train_nonec_fasta']]:
+        if not os.path.isfile(filename):
+            print("ERROR! no such file "+filename)
+            exit(1)
+
+    cmd=settings['mmseqs']+' createdb '+settings['train_ec_fasta']+' '+settings['db']
+    print(cmd)
+    os.system(cmd)
+    if not os.path.isdir(settings['tmp_dir']):
+        os.makedirs(settings['tmp_dir'])
+    cmd=settings['mmseqs']+' createindex '+settings['db']+' '+settings['tmp_dir']
+    print(cmd)
+    os.system(cmd)
+
+    print("read active site from "+settings['train_ec_tsv'])
+    bs_dict=dict()
+    fp=open(settings['train_ec_tsv'])
+    for line in fp.read().splitlines():
+        if line.startswith('#'):
+            continue
+        items=line.split('\t')
+        target=items[0]
+        binding=items[4].replace('..',',')
+        act_site=items[5].replace('..',',')
+        if not binding and not act_site:
+            continue
+        bs_list=[]
+        if binding:
+            bs_list+=[int(s) for s in binding.split(',')]
+        if act_site:
+            bs_list+=[int(s) for s in act_site.split(',')]
+        if not target in bs_dict:
+            bs_dict[target]=bs_list
+        else:
+            bs_dict[target]+=bs_list
+
+
+    print("prepare "+settings['train_seqs1_fasta'])
+    totalN=0
+    seleN=0
+    seq_list=[]
+    target_list=[]
+    fp=open(settings['train_ec_fasta'])
+    for block in ('\n'+fp.read()).split('\n>'):
+        if not block.strip():
+            continue
+        lines=block.splitlines()
+        target=lines[0].split()[0]
+        sequence=''.join(lines[1:])
+        totalN+=1
+        if len(sequence)<30:
+            continue
+        if len(sequence)>2048:
+            if not target in bs_dict:
+                print("ERROR! "+target+" too long (L=%d) and lack site"%len(sequence))
+                continue
+            min_bs=min(bs_dict[target])-1
+            max_bs=max(bs_dict[target])-1
+            if max_bs-min_bs>=2048:
+                print("ERROR! "+target+" too long (L=%d), site=%d..%d"%(
+                    len(sequence),min_bs,max_bs))
+                continue
+            mid_bs = int((max_bs + min_bs ) / 2)
+            min_bs = mid_bs - 1024
+            if min_bs<0:
+                min_bs = 0
+            max_bs = min_bs + 2048
+            if max_bs >=len(sequence):
+                min_bs = len(sequence)-2048
+            print("WARNING! trim "+target+" from L=%d to L=2048"%(len(sequence)))
+            sequence=sequence[min_bs:(min_bs+2048)]
+        seleN+=1
+        seq_list.append((len(sequence),'>'+target+'\n'+sequence+'\n'))
+        target_list.append(target)
+    fp.close()
+    #seq_list.sort(reverse=True)
+    
+    print("writing %d out of %d sequence"%(seleN,totalN))
+    txt=''.join([seq for L,seq in seq_list])
+    fp=open(settings['train_seqs1_fasta'],'w')
+    fp.write(txt)
+    fp.close()
+    
+    print("prepare "+settings['train_seqs2_fasta'])
+    fp=open(settings['train_nonec_fasta'])
+    for block in ('\n'+fp.read()).split('\n>'):
+        if not block.strip():
+            continue
+        lines=block.splitlines()
+        target=lines[0].split()[0]
+        sequence=''.join(lines[1:])
+        totalN+=1
+        if len(sequence)<30:
+            continue
+        if len(sequence)>2048:
+            print("ERROR! "+target+" too long (L=%d)"%len(sequence))
+            continue
+        seleN+=1
+        seq_list.append((len(sequence),'>'+target+'\n'+sequence+'\n'))
+        target_list.append(target)
+    fp.close()
+    #seq_list.sort(reverse=True)
+    #random.shuffle(seq_list)
+    target_set=set(target_list)
+    print("writing %d out of %d sequence"%(seleN,totalN))
+    txt=''.join([seq for L,seq in seq_list])
+    fp=open(settings['train_seqs2_fasta'],'w')
+    fp.write(txt)
+    fp.close()
+
+    cmd_list=[
+        settings['cdhit_path']+" -i "+settings['train_seqs1_fasta']+" -o "+settings['train_seqs1_fasta']+".cdhit -c 0.6 -M 5000 -n 4 -T 16 -g 1 -sc 1",
+        settings['cdhit_path']+" -i "+settings['train_seqs2_fasta']+" -o "+settings['train_seqs2_fasta']+".cdhit -c 0.6 -M 5000 -n 4 -T 16 -g 1 -sc 1"]
+    for cmd in cmd_list:
+        print(cmd)
+        os.system(cmd)
+    
+    print("prepare "+settings['train_terms1_tsv'])
+    line_list=[]
+    train_ec_dict=dict()
+    fp=open(settings['train_ec_tsv'])
+    for line in fp.read().splitlines():
+        if line.startswith('#'):
+            continue
+        target,ECnumber=line.split('\t')[:2]
+        if not target in target_set:
+            continue
+        EC_list=ECnumber.split('.')
+        for i in range(1,5):
+            if EC_list[i-1]=='-':
+                continue
+            ECnumber='.'.join(EC_list[:i]+['-']*(4-i))
+            line_list.append("%s\tEC%d\t%s\n"%(target,i,ECnumber))
+    fp.close()
+    txt='EntryID\taspect\tterm\n'+''.join(list(set(line_list)))
+    fp=open(settings['train_terms1_tsv'],'w')
+    fp.write(txt)
+    fp.close()
+    
+    print("prepare "+settings['train_terms2_tsv'])
+    nonec_list=[]
+    fp=open(settings['train_nonec_tsv'])
+    for line in fp.read().splitlines():
+        if line.startswith('#'):
+            continue
+        target=line.split('\t')[0]
+        if not target in target_set:
+            continue
+        nonec_list.append(target)
+    fp.close()
+    for target in set(nonec_list):
+        line_list.append(target+"\tEC1\t0.-.-.-\n")
+    txt='EntryID\taspect\tterm\n'+''.join(list(set(line_list)))
+    fp=open(settings['train_terms2_tsv'],'w')
+    fp.write(txt)
+    fp.close()
+    return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-train","--train_terms_tsv", type=str, help="path to the tsv file of the training terms", default=None)
-    parser.add_argument("-train_seqs","--train_seqs_fasta", type=str, help="path to the fasta file of the training sequences", default=None)
-    parser.add_argument("-test", "--test_terms_tsv", type=str, help="path to the tsv file of the test terms", default=None)
-    parser.add_argument("-test_seqs", "--test_seqs_fasta", type=str, help="path to the fasta file of the test sequences", default=None)
     parser.add_argument('-d', '--Data_dir', type=str, default=settings['DATA_DIR'], help='path to the directory of the data')
     parser.add_argument('--min_ec',  type=int, default=10, help='minimum number instances of EC number')
     parser.add_argument('--seed', type=int, default=1234567890)
-    parser.add_argument('--stratifi', action='store_true', help='whether to use stratified multi-label in kfold')
     args = parser.parse_args()
     args.Data_dir = os.path.abspath(args.Data_dir)
     min_count_dict = {
@@ -523,42 +607,21 @@ if __name__ == "__main__":
     }
     seed = args.seed
 
-    if args.train_terms_tsv is not None:
-        args.train_terms_tsv = os.path.abspath(args.train_terms_tsv)
-    elif os.path.exists(settings['train_terms_tsv']):
-        args.train_terms_tsv = settings['train_terms_tsv']
-    else:
-        raise Exception(f'Error: train_terms_tsv not found at {args.train_terms_tsv}, please specify the path to the training terms tsv file')
-    train_terms_tsv = args.train_terms_tsv
-
-    if args.train_seqs_fasta is not None:
-        args.train_seqs_fasta = os.path.abspath(args.train_seqs_fasta)
-    elif os.path.exists(settings['train_seqs_fasta']):
-        args.train_seqs_fasta = settings['train_seqs_fasta']
-    else:
-        raise Exception(f'Error: train_seqs_fasta not found at {args.train_seqs_fasta}, please specify the path to the training sequences fasta file')
-    train_seqs_fasta = args.train_seqs_fasta
-
-    if args.test_terms_tsv is not None:
-        args.test_terms_tsv = os.path.abspath(args.test_terms_tsv)
-    test_terms_tsv = args.test_terms_tsv
-    if args.test_seqs_fasta is not None:
-        args.test_seqs_fasta = os.path.abspath(args.test_seqs_fasta)
-    test_seqs_fasta = args.test_seqs_fasta
-
     Data_dir = args.Data_dir
-    stratifi = args.stratifi
-    main(train_terms_tsv, train_seqs_fasta, Data_dir, min_count_dict, seed, stratifi, test_terms_tsv, test_seqs_fasta)
-    IC(train_terms_tsv, settings['ia_file'])
+    for folder in [settings['TRAIN_DATA_CLEAN_DIR1'],
+                   settings['TRAIN_DATA_CLEAN_DIR2']]:
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
+    update_data()
+
+    for idx in ['1','2']:
+        IC(settings['train_terms'+idx+'_tsv'], settings['ia_file'+idx])
+        main(settings['train_terms'+idx+'_tsv'], 
+            settings['train_seqs'+idx+'_fasta'], 
+            settings['TRAIN_DATA_CLEAN_DIR'+idx],
+            min_count_dict, seed)
     
     # extract embeddings
     print('Extracting embeddings...')
-    filename_list=split_db(train_seqs_fasta)
-    #for train_filename,val_filename in filename_list:
-        #extract_homolog_embeddings(val_filename+".fasta", train_filename)
-
-    extract_homolog_embeddings(train_seqs_fasta, settings['db'])
-    #extract_embeddings(train_seqs_fasta)
-    if test_seqs_fasta is not None:
-        extract_homolog_embeddings(test_seqs_fasta, settings['db'])
-        #extract_embeddings(test_seqs_fasta)
+    extract_homolog_embeddings(settings['train_seqs2_fasta'], settings['db'])
+    #extract_embeddings(settings['train_seqs2_fasta'])
