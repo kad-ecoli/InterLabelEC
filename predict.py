@@ -20,13 +20,37 @@ from fasta2plm import fasta2esm,homolog2esm
 from settings import settings_dict as settings
 from settings import training_config
 
+blosum62={
+    'A':{'A': 4,'R':-1,'N':-2,'D':-2,'C': 0,'Q':-1,'E':-1,'G': 0,'H':-2,'I':-1,'L':-1,'K':-1,'M':-1,'F':-2,'P':-1,'S': 1,'T': 0,'W':-3,'Y':-2,'V': 0,'B':-2,'Z':-1,'X': 0,'*':-4 },
+    'R':{'A':-1,'R': 5,'N': 0,'D':-2,'C':-3,'Q': 1,'E': 0,'G':-2,'H': 0,'I':-3,'L':-2,'K': 2,'M':-1,'F':-3,'P':-2,'S':-1,'T':-1,'W':-3,'Y':-2,'V':-3,'B':-1,'Z': 0,'X':-1,'*':-4 },
+    'N':{'A':-2,'R': 0,'N': 6,'D': 1,'C':-3,'Q': 0,'E': 0,'G': 0,'H': 1,'I':-3,'L':-3,'K': 0,'M':-2,'F':-3,'P':-2,'S': 1,'T': 0,'W':-4,'Y':-2,'V':-3,'B': 3,'Z': 0,'X':-1,'*':-4 },
+    'D':{'A':-2,'R':-2,'N': 1,'D': 6,'C':-3,'Q': 0,'E': 2,'G':-1,'H':-1,'I':-3,'L':-4,'K':-1,'M':-3,'F':-3,'P':-1,'S': 0,'T':-1,'W':-4,'Y':-3,'V':-3,'B': 4,'Z': 1,'X':-1,'*':-4 },
+    'C':{'A': 0,'R':-3,'N':-3,'D':-3,'C': 9,'Q':-3,'E':-4,'G':-3,'H':-3,'I':-1,'L':-1,'K':-3,'M':-1,'F':-2,'P':-3,'S':-1,'T':-1,'W':-2,'Y':-2,'V':-1,'B':-3,'Z':-3,'X':-2,'*':-4 },
+    'Q':{'A':-1,'R': 1,'N': 0,'D': 0,'C':-3,'Q': 5,'E': 2,'G':-2,'H': 0,'I':-3,'L':-2,'K': 1,'M': 0,'F':-3,'P':-1,'S': 0,'T':-1,'W':-2,'Y':-1,'V':-2,'B': 0,'Z': 3,'X':-1,'*':-4 },
+    'E':{'A':-1,'R': 0,'N': 0,'D': 2,'C':-4,'Q': 2,'E': 5,'G':-2,'H': 0,'I':-3,'L':-3,'K': 1,'M':-2,'F':-3,'P':-1,'S': 0,'T':-1,'W':-3,'Y':-2,'V':-2,'B': 1,'Z': 4,'X':-1,'*':-4 },
+    'G':{'A': 0,'R':-2,'N': 0,'D':-1,'C':-3,'Q':-2,'E':-2,'G': 6,'H':-2,'I':-4,'L':-4,'K':-2,'M':-3,'F':-3,'P':-2,'S': 0,'T':-2,'W':-2,'Y':-3,'V':-3,'B':-1,'Z':-2,'X':-1,'*':-4 },
+    'H':{'A':-2,'R': 0,'N': 1,'D':-1,'C':-3,'Q': 0,'E': 0,'G':-2,'H': 8,'I':-3,'L':-3,'K':-1,'M':-2,'F':-1,'P':-2,'S':-1,'T':-2,'W':-2,'Y': 2,'V':-3,'B': 0,'Z': 0,'X':-1,'*':-4 },
+    'I':{'A':-1,'R':-3,'N':-3,'D':-3,'C':-1,'Q':-3,'E':-3,'G':-4,'H':-3,'I': 4,'L': 2,'K':-3,'M': 1,'F': 0,'P':-3,'S':-2,'T':-1,'W':-3,'Y':-1,'V': 3,'B':-3,'Z':-3,'X':-1,'*':-4 },
+    'L':{'A':-1,'R':-2,'N':-3,'D':-4,'C':-1,'Q':-2,'E':-3,'G':-4,'H':-3,'I': 2,'L': 4,'K':-2,'M': 2,'F': 0,'P':-3,'S':-2,'T':-1,'W':-2,'Y':-1,'V': 1,'B':-4,'Z':-3,'X':-1,'*':-4 },
+    'K':{'A':-1,'R': 2,'N': 0,'D':-1,'C':-3,'Q': 1,'E': 1,'G':-2,'H':-1,'I':-3,'L':-2,'K': 5,'M':-1,'F':-3,'P':-1,'S': 0,'T':-1,'W':-3,'Y':-2,'V':-2,'B': 0,'Z': 1,'X':-1,'*':-4 },
+    'M':{'A':-1,'R':-1,'N':-2,'D':-3,'C':-1,'Q': 0,'E':-2,'G':-3,'H':-2,'I': 1,'L': 2,'K':-1,'M': 5,'F': 0,'P':-2,'S':-1,'T':-1,'W':-1,'Y':-1,'V': 1,'B':-3,'Z':-1,'X':-1,'*':-4 },
+    'F':{'A':-2,'R':-3,'N':-3,'D':-3,'C':-2,'Q':-3,'E':-3,'G':-3,'H':-1,'I': 0,'L': 0,'K':-3,'M': 0,'F': 6,'P':-4,'S':-2,'T':-2,'W': 1,'Y': 3,'V':-1,'B':-3,'Z':-3,'X':-1,'*':-4 },
+    'P':{'A':-1,'R':-2,'N':-2,'D':-1,'C':-3,'Q':-1,'E':-1,'G':-2,'H':-2,'I':-3,'L':-3,'K':-1,'M':-2,'F':-4,'P': 7,'S':-1,'T':-1,'W':-4,'Y':-3,'V':-2,'B':-2,'Z':-1,'X':-2,'*':-4 },
+    'S':{'A': 1,'R':-1,'N': 1,'D': 0,'C':-1,'Q': 0,'E': 0,'G': 0,'H':-1,'I':-2,'L':-2,'K': 0,'M':-1,'F':-2,'P':-1,'S': 4,'T': 1,'W':-3,'Y':-2,'V':-2,'B': 0,'Z': 0,'X': 0,'*':-4 },
+    'T':{'A': 0,'R':-1,'N': 0,'D':-1,'C':-1,'Q':-1,'E':-1,'G':-2,'H':-2,'I':-1,'L':-1,'K':-1,'M':-1,'F':-2,'P':-1,'S': 1,'T': 5,'W':-2,'Y':-2,'V': 0,'B':-1,'Z':-1,'X': 0,'*':-4 },
+    'W':{'A':-3,'R':-3,'N':-4,'D':-4,'C':-2,'Q':-2,'E':-3,'G':-2,'H':-2,'I':-3,'L':-2,'K':-3,'M':-1,'F': 1,'P':-4,'S':-3,'T':-2,'W':11,'Y': 2,'V':-3,'B':-4,'Z':-3,'X':-2,'*':-4 },
+    'Y':{'A':-2,'R':-2,'N':-2,'D':-3,'C':-2,'Q':-1,'E':-2,'G':-3,'H': 2,'I':-1,'L':-1,'K':-2,'M':-1,'F': 3,'P':-3,'S':-2,'T':-2,'W': 2,'Y': 7,'V':-1,'B':-3,'Z':-2,'X':-1,'*':-4 },
+    'V':{'A': 0,'R':-3,'N':-3,'D':-3,'C':-1,'Q':-2,'E':-2,'G':-3,'H':-3,'I': 3,'L': 1,'K':-2,'M': 1,'F':-1,'P':-2,'S':-2,'T': 0,'W':-3,'Y':-1,'V': 4,'B':-3,'Z':-2,'X':-1,'*':-4 },
+    'B':{'A':-2,'R':-1,'N': 3,'D': 4,'C':-3,'Q': 0,'E': 1,'G':-1,'H': 0,'I':-3,'L':-4,'K': 0,'M':-3,'F':-3,'P':-2,'S': 0,'T':-1,'W':-4,'Y':-3,'V':-3,'B': 4,'Z': 1,'X':-1,'*':-4 },
+    'Z':{'A':-1,'R': 0,'N': 0,'D': 1,'C':-3,'Q': 3,'E': 4,'G':-2,'H': 0,'I':-3,'L':-3,'K': 1,'M':-1,'F':-3,'P':-1,'S': 0,'T':-1,'W':-3,'Y':-2,'V':-2,'B': 1,'Z': 4,'X':-1,'*':-4 },
+    'X':{'A': 0,'R':-1,'N':-1,'D':-1,'C':-2,'Q':-1,'E':-1,'G':-1,'H':-1,'I':-1,'L':-1,'K':-1,'M':-1,'F':-1,'P':-2,'S': 0,'T': 0,'W':-2,'Y':-1,'V':-1,'B':-1,'Z':-1,'X': 1,'*':-4 },
+    '*':{'A':-4,'R':-4,'N':-4,'D':-4,'C':-4,'Q':-4,'E':-4,'G':-4,'H':-4,'I':-4,'L':-4,'K':-4,'M':-4,'F':-4,'P':-4,'S':-4,'T':-4,'W':-4,'Y':-4,'V':-4,'B':-4,'Z':-4,'X':-4,'*': 1 },
+}
 
-# the following package is from local
-#from utils import obo_tools
-#oboTools = obo_tools.ObOTools(
-    #go_obo=settings['obo_file'],
-    #obo_pkl=settings['obo_pkl_file']
-#)V
+def System(cmd):
+    print(cmd)
+    os.system(cmd)
+    return
 
 class InterLabelGO_pipeline:
     def __init__(self,
@@ -36,7 +60,6 @@ class InterLabelGO_pipeline:
         device:str='cuda',
         top_terms:int=500, # number of top terms to be keeped in the prediction
         aspects:list=['EC'], # aspects to predict
-        cache_dir:str=None,
         ## the following parameters should be fixed if you want to use the pretrained model
         repr_layers:list=training_config['repr_layers'],
         embed_batch_size:int=4096, # note this might take around 15GB of vram, if you don't have enough vram, you can set this to 2048
@@ -55,7 +78,6 @@ class InterLabelGO_pipeline:
         self.device = device
         self.top_terms = top_terms
         self.aspects = aspects
-        self.cache_dir = cache_dir
 
         self.repr_layers = repr_layers
         self.embed_model_name = embed_model_name
@@ -98,29 +120,7 @@ class InterLabelGO_pipeline:
         return fasta_dict  
     
     def get_embed_features(self):
-        #Embed = PlmEmbed(
-            #fasta_file=self.fasta_file,
-            #working_dir=self.working_dir,
-            #repr_layers=self.repr_layers,
-            #model_name=self.embed_model_name,
-            #model_path=self.embed_model_path,
-            #use_gpu=('cuda' in self.device),
-            #include=self.include,
-            #cache_dir=self.cache_dir,
-        #)
         print("Extracting embeding features")
-        #Embed.extract(
-            #fasta_file=self.fasta_file,
-            #model_name=self.embed_model_name,
-            #model_path=self.embed_model_path,
-            #use_gpu=('cuda' in self.device),
-            #repr_layers=self.repr_layers,
-            #include=self.include,
-            #batch_size=self.embed_batch_size,
-            #model_type='esm',
-            #)
-        #feature_dir = Embed.cache_dir
-        #return feature_dir
         feature_dir = os.path.join(self.working_dir, "embed_feature")
         #fasta2esm(self.fasta_file, feature_dir)
         homolog2esm(self.fasta_file, feature_dir, settings['db'])
@@ -201,7 +201,6 @@ class InterLabelGO_pipeline:
             df = pd.DataFrame(predictions, columns=term_list, index=names)
             df = df.stack().reset_index()
             df.columns = columns
-            #df = self.parent_propagation(df)
             df = df[df['score'] > 0.001]
             # sort by name then score
             df = df.sort_values(by=['EntryID','score'], ascending=[True, False])
@@ -215,87 +214,436 @@ class InterLabelGO_pipeline:
             # write to tsv file
             df.to_csv(result_file, index=False, sep='\t', mode='a', header=False)
 
-            cmd=settings["parse_isa"]+' '+result_file+' '+result_file
-            print(cmd)
-            os.system(cmd)
+            System(settings["parse_isa"]+' '+result_file+' '+result_file)
             #print(seeds_dict)
-
-    def parent_propagation(self, df: pd.DataFrame):
-        '''
-        propagate the prediction to the parent terms
-        df.columns = ['EntryID', 'term', 'score']
-        '''
-        # Convert to dict, where key is the EntryID, value dict of term and score
-        df_dict = df.groupby('EntryID').apply(lambda x: x.set_index('term')['score'].to_dict()).to_dict()
-        
-        # Propagate the prediction to the parent terms
-        result_dict = {}
-        for EntryID, term_score in tqdm(df_dict.items(), desc='propagate prediction', ascii=' >='):
-            #result_dict[EntryID] = oboTools.backprop_cscore(term_score, min_cscore=0.001)
-            result_dict[EntryID] = term_score
-        
-        # Convert back to dataframe
-        rows = []
-        for EntryID, terms_scores in result_dict.items():
-            for term, score in terms_scores.items():
-                rows.append({'EntryID': EntryID, 'term': term, 'score': score})
-        
-        result_df = pd.DataFrame(rows)
-        return result_df
-        
+        return
 
     def main(self):
         feature_dir = self.get_embed_features()
         self.predict(feature_dir)
+        return
 
-def combine_result(working_dir:str):
-    target_list=[]
-    predict_dict=dict()
-    fp=open(os.path.join(working_dir,"DL2.tsv"))
-    for line in fp.read().splitlines():
-        items   =line.split('\t')
-        target  =items[0]
-        ECnumber=items[1]
-        if not target in predict_dict:
-            predict_dict[target]=''
-            target_list.append(target)
-        if ECnumber=='0.-.-.-':
-            predict_dict[target]+=line+'\n'
-    fp.close()
-    fp=open(os.path.join(working_dir,"DL1.tsv"))
-    for line in fp.read().splitlines():
-        items   =line.split('\t')
-        target  =items[0]
-        ECnumber=items[1]
-        if not target in predict_dict:
-            predict_dict[target]=''
-            target_list.append(target)
-        if ECnumber!='0.-.-.-':
-            predict_dict[target]+=line+'\n'
-    fp.close()
+class combine_pipeline:
+    def __init__(self,
+        working_dir:str,
+        fasta_file:str,
+        pdb_dir:str='',
+        result_file:str='',
+    ) -> None:
+        self.working_dir = os.path.abspath(working_dir)
+        self.fasta_file = os.path.abspath(fasta_file)
+        self.result_file = os.path.join(self.working_dir, 'combine.tsv')
+        self.pdb_dir = ''
+        if pdb_dir:
+            self.pdb_dir = pdb_dir
+        if result_file:
+            self.result_file=result_file
+    
+    def read_annotation(self,infile_list=[]):
+        sacc_list=[]
+        for infile in infile_list:
+            fp=open(infile)
+            for line in fp.read().splitlines():
+                items=line.split('\t')
+                sacc_list.append(items[2])
+            fp.close()
+        sacc_set=set(sacc_list)
+        read_sacc_set=len(sacc_set)
+        print("%d templates"%len(sacc_set))
+    
+        exp_dict=dict()
+        site_dict=dict()
 
-    txt=''.join([predict_dict[target] for target in target_list])
-    fp=open(os.path.join(working_dir,"DL.tsv"),'w')
-    fp.write(txt)
-    fp.close()
-    return
+        ECnumber="0.-.-.-"
+        fp=open(settings["train_nonec_tsv"])
+        for line in fp.read().splitlines():
+            if line.startswith('#'):
+                continue
+            items=line.split('\t')
+            sacc=items[0]
+            if read_sacc_set and not sacc in sacc_set:
+                continue
+            exp_dict[sacc]=[ECnumber]
+            if len(exp_dict) % 1000 ==0:
+                print("parsed %d / %d templates"%(len(exp_dict),len(sacc_set)))
+        fp.close()
+
+        fp=open(settings["train_ec_tsv"])
+        for line in fp.read().splitlines():
+            if line.startswith('#'):
+                continue
+            items=line.split('\t')
+            sacc=items[0]
+            if read_sacc_set and not sacc in sacc_set:
+                continue
+            ECnumber=items[1]
+            site_list=[]
+            for col in [-2,-1]:
+                if len(items[col])==0:
+                    continue
+                for site in items[col].split(','):
+                    if not site:
+                        continue
+                    elif '..' in site:
+                        sstart,send=site.split('..')
+                        for s in range(int(sstart),int(send)+1):
+                            site_list.append(s)
+                    else:
+                        site_list.append(int(site))
+            site_list=set(site_list)
+            if not sacc in exp_dict:
+                exp_dict[sacc]=[]
+            if len(site_list):
+                if not sacc in site_dict:
+                    site_dict[sacc]=site_list
+                else:
+                    site_dict[sacc].union(site_list)
+            for e in range(4-ECnumber.count('-'),0,-1):
+                ECnumber='.'.join(ECnumber.split('.')[:e]+['-']*(4-e))
+                if not ECnumber in exp_dict[sacc]:
+                    exp_dict[sacc].append(ECnumber)
+            if len(exp_dict) % 1000 ==0:
+                print("parsed %d / %d templates"%(len(exp_dict),len(sacc_set)))
+        fp.close()
+        return exp_dict,site_dict
+
+    def parse_blast(self,infile,site_dict,infmt='blast'):
+        similarity_dict=dict()
+        for aa1 in blosum62:
+            similarity_dict[aa1]=dict()
+            for aa2 in blosum62[aa1]:
+                similarity_dict[aa1][aa2]=2.*blosum62[aa1][aa2]/(
+                      blosum62[aa1][aa1]+blosum62[aa2][aa2])
+                if similarity_dict[aa1][aa2]<0:
+                    similarity_dict[aa1][aa2]=0
+    
+        blast_dict=dict()
+        fp=open(infile)
+        stdout=fp.read()
+        fp.close()
+        for line in stdout.splitlines():
+            if infmt=='diamond' or infmt=='blast':
+                qacc,qlen,sacc,slen,evalue,bitscore,length,nident,qseq,qstart,sseq,sstart=line.split('\t')[:12]
+            elif infmt=='foldseek':
+                qacc,qlen,sacc,slen,evalue,bitscore,length,nident,qseq,qstart,sseq,sstart,qtmscore,stmscore=line.split('\t')[:14]
+                if qacc in blast_dict and len(blast_dict[qacc])>=5:
+                    continue
+                qtmscore=float(qtmscore)
+                stmscore=float(stmscore)
+                TM=min((qtmscore,stmscore))
+            else:
+                print("ERROR! infmt=",infmt)
+                exit()
+            qlen=float(qlen)
+            slen=float(slen)
+            bitscore=float(bitscore)
+            nident=float(nident)
+            length=float(length)
+            evalue=float(evalue)
+            if nident<=1:
+                nident*=length
+            if not qacc in blast_dict:
+                if len(blast_dict) % 1000 == 0:
+                    print("parse %d %s"%(len(blast_dict),qacc))
+                blast_dict[qacc]=[]
+            ID=nident/max((qlen,slen))
+            score=bitscore*ID
+            if infmt=='foldseek':
+                score=bitscore*ID*TM
+            blast_dict[qacc].append([sacc, score, qseq, int(qstart), sseq, int(sstart), ID])
+
+        count=0
+        for qacc in blast_dict: 
+            if count %1000 ==0:
+                print("calculate local score %d %s"%(count,qacc))
+            count+=1
+            qacc_site_dict=dict()
+            denominator=sum([blast_dict[qacc][i][1] for i in range(len(blast_dict[qacc]))])
+            for items in blast_dict[qacc]:
+                sacc=items[0]
+                if not sacc in site_dict:
+                    continue
+                score =items[1]/denominator
+                qseq  =items[2]
+                qstart=items[3]
+                sseq  =items[4]
+                sstart=items[5]
+                ID    =items[6]
+                r1=qstart-1
+                r2=sstart-1
+                for p in range(len(qseq)):
+                    aa1=qseq[p]
+                    aa2=sseq[p]
+                    r1+=aa1!='-'
+                    r2+=aa2!='-'
+                    if aa1!='-' and aa2!='-':
+                        issite=(r2 in site_dict[sacc])
+                        for ri in site_dict[sacc]:
+                            if abs(ri-r2)<=2:
+                                issite+=1
+                        if issite:
+                            if not r1 in qacc_site_dict:
+                                qacc_site_dict[r1]=score*issite
+                            else:
+                                qacc_site_dict[r1]+=score*issite
+            for i,items in enumerate(blast_dict[qacc]):
+                sacc =items[0]
+                score=items[1]
+                if len(qacc_site_dict)>0:
+                    qseq  =items[2]
+                    qstart=items[3]
+                    sseq  =items[4]
+                    sstart=items[5]
+                    r1=qstart-1
+                    r2=sstart-1
+                    score_local=0
+                    for p in range(len(qseq)):
+                        aa1=qseq[p]
+                        aa2=sseq[p]
+                        r1+=aa1!='-'
+                        r2+=aa2!='-'
+                        if aa1==aa2 and r1 in qacc_site_dict:
+                            score_local+=qacc_site_dict[r1]
+                    blast_dict[qacc][i]=(sacc,score,score_local,ID,
+                        score_local/sum([qacc_site_dict[r1] for r1 in qacc_site_dict]))
+                else:
+                    blast_dict[qacc][i]=(sacc,score,score,ID,ID)
+        return blast_dict
+    
+    def combine_result(self):
+        target_list=[]
+        predict_dict=dict()
+        fp=open(os.path.join(working_dir,"DL2.tsv"))
+        for line in fp.read().splitlines():
+            items   =line.split('\t')
+            target  =items[0]
+            ECnumber=items[1]
+            if not target in predict_dict:
+                predict_dict[target]=''
+                target_list.append(target)
+            if ECnumber=='0.-.-.-':
+                predict_dict[target]+=line+'\n'
+        fp.close()
+        fp=open(os.path.join(working_dir,"DL1.tsv"))
+        for line in fp.read().splitlines():
+            items   =line.split('\t')
+            target  =items[0]
+            ECnumber=items[1]
+            if not target in predict_dict:
+                predict_dict[target]=''
+                target_list.append(target)
+            if ECnumber!='0.-.-.-':
+                predict_dict[target]+=line+'\n'
+        fp.close()
+
+        txt=''.join([predict_dict[target] for target in target_list])
+        fp=open(os.path.join(working_dir,"DL.tsv"),'w')
+        fp.write(txt)
+        fp.close()
+        return
+    
+    def parse_dl(self,dlfile):
+        dl_dict=dict()
+        fp=open(dlfile)
+        for line in fp.read().splitlines():
+            target,ECnumber,cscore=line.split('\t')[:3]
+            if not target in dl_dict:
+                dl_dict[target]=dict()
+            dl_dict[target][ECnumber]=float(cscore)
+        fp.close()
+        return dl_dict
+
+    def get_score(self,target,blast_dict,exp_dict):
+        predict_global_dict=dict()
+        predict_local_dict=dict()
+        denominator_global=0
+        denominator_local=0
+        weight_global=1
+        if target in blast_dict:
+            for sacc,score_global,score_local,IDglobal,IDlocal in blast_dict[target]:
+                if not sacc in exp_dict:
+                    continue
+                denominator_global+=score_global
+                denominator_local +=score_local
+                weight_global*=(1-IDglobal)
+                for ECnumber in exp_dict[sacc]:
+                    if not ECnumber in predict_global_dict:
+                        predict_global_dict[ECnumber]=0
+                        predict_local_dict[ECnumber]=0
+                    predict_global_dict[ECnumber]+=score_global
+                    predict_local_dict[ECnumber] +=score_local
+        weight_dynamic=1-weight_global
+        return predict_global_dict,predict_local_dict,denominator_global,denominator_local,weight_dynamic
+    
+    def write_output(self,blast_dict,foldseek_dict,exp_dict,dl_dict):
+        target_list=[target for target in blast_dict
+                  ]+[target for target in foldseek_dict
+                  ]+[target for target in dl_dict]
+        target_list=sorted(set(target_list))
+        print("writing %s for %d target"%(self.result_file,len(target_list)))
+        txt=''
+        txt_seq1=''
+        txt_seq2=''
+        txt_str=''
+        txt_template=''
+        weight_method=0.9
+        weight_dl=0.3  #F1=0.7821
+        for t,target in enumerate(target_list):
+            if t%1000==0:
+                print("predict %d %s"%(t+1,target))
+            predict_blast_global_dict,predict_blast_local_dict,denominator_blast_global,denominator_blast_local,weight_blast=self.get_score(target,blast_dict,exp_dict)
+            predict_foldseek_global_dict,predict_foldseek_local_dict,denominator_foldseek_global,denominator_foldseek_local,weight_foldseek=self.get_score(target,foldseek_dict,exp_dict)
+
+            ECnumber_list = [ECnumber for ECnumber in predict_blast_global_dict
+                          ]+[ECnumber for ECnumber in predict_foldseek_global_dict]
+            if target in dl_dict:
+                ECnumber_list+=[ECnumber for ECnumber in dl_dict[target]]
+            ECnumber_list=list(set(ECnumber_list))
+
+            weight_method = weight_blast
+        
+            predict_list=[]
+            predict_seq2_list=[]
+            predict_str_list=[]
+            predict_template_list=[]
+            for ECnumber in ECnumber_list:
+                cscore_dl = 0
+                if target in dl_dict and ECnumber in dl_dict[target]:
+                    cscore_dl = dl_dict[target][ECnumber]
+                
+                if ECnumber=="0.-.-.-":
+                    #if ECnumber in predict_blast2_global_dict:
+                        #cscore_blast=predict_blast2_global_dict[ECnumber]/denominator_blast2_global
+                        #predict_seq2_list.append((cscore_blast,ECnumber))
+                
+                    ##weight_dl = 0.2+0.1*(1 - weight_blast2) # F1=0.8600
+                    #weight_dl = 1.0 # F1=0.9134
+                    #cscore = weight_dl * cscore_dl + (1-weight_dl)*cscore_blast
+                    predict_list.append((cscore_dl,ECnumber))
+                    continue
+
+                score_blast_global=0
+                score_blast_local =0
+                if ECnumber in predict_blast_global_dict:
+                    score_blast_global=predict_blast_global_dict[ECnumber]
+                    score_blast_local =predict_blast_local_dict[ECnumber]
+                    if denominator_blast_global>0:
+                        score_blast_global/=denominator_blast_global
+                    if denominator_blast_local>0:
+                        score_blast_local/=denominator_blast_local
+                cscore_blast=weight_blast*score_blast_global+(1.-weight_blast)*score_blast_local
+                predict_seq2_list.append((cscore_blast,ECnumber))
+
+                score_foldseek_global=0
+                score_foldseek_local =0
+                if ECnumber in predict_foldseek_global_dict:
+                    score_foldseek_global=predict_foldseek_global_dict[ECnumber]
+                    score_foldseek_local =predict_foldseek_local_dict[ECnumber]
+                    if denominator_foldseek_global>0:
+                        score_foldseek_global/=denominator_foldseek_global
+                    if denominator_foldseek_local>0:
+                        score_foldseek_local/=denominator_foldseek_local
+                cscore_foldseek=weight_foldseek*score_foldseek_global+(1.-weight_foldseek)*score_foldseek_local
+                predict_str_list.append((cscore_foldseek,ECnumber))
+
+                cscore = weight_method* cscore_blast + (1-weight_method)*cscore_foldseek 
+                predict_template_list.append((cscore,ECnumber))
+                weight_dl = 0.2+0.1*(1 - weight_blast) #F1=0.7833, 0.9168
+                if weight_blast>0.9: # 0.7853, 0.9170
+                    weight_dl=0
+
+                cscore = weight_dl * cscore_dl + (1-weight_dl)*cscore
+                predict_list.append((cscore,ECnumber))
+            predict_list.sort(reverse=True)
+            predict_seq2_list.sort(reverse=True)
+            predict_str_list.sort(reverse=True)
+            predict_template_list.sort(reverse=True)
+                    
+            for cscore,ECnumber in predict_list:
+                if cscore<0.001:
+                    break
+                txt+="%s\t%s\t%.3f\n"%(target,ECnumber,cscore)
+            for cscore,ECnumber in predict_seq2_list:
+                if cscore<0.001:
+                    break
+                txt_seq2+="%s\t%s\t%.3f\n"%(target,ECnumber,cscore)
+            for cscore,ECnumber in predict_str_list:
+                if cscore<0.001:
+                    break
+                txt_str+="%s\t%s\t%.3f\n"%(target,ECnumber,cscore)
+            for cscore,ECnumber in predict_template_list:
+                if cscore<0.001:
+                    break
+                txt_template+="%s\t%s\t%.3f\n"%(target,ECnumber,cscore)
+        fp=open(os.path.join(self.working_dir,"mmseqs.tsv"),'w')
+        fp.write(txt_seq2)
+        fp.close()
+        fp=open(os.path.join(self.working_dir,"foldseek.tsv"),'w')
+        fp.write(txt_str)
+        fp.close()
+        fp=open(os.path.join(self.working_dir,"template.tsv"),'w')
+        fp.write(txt_template)
+        fp.close()
+        fp=open(self.result_file,'w')
+        fp.write(txt)
+        fp.close()
+        return
+
+    def main(self):
+        self.combine_result()
+
+        #### run mmseqs ####
+        mmseqs1=os.path.join(working_dir,"mmseqs.m6")
+        #mmseqs2=os.path.join(working_dir,"mmseqs2.m6")
+        tmpdir=os.path.join(working_dir,"tmp")
+        if not os.path.isfile(mmseqs1):
+            System(settings["mmseqs"]+" easy-search --max-seqs 4 --format-output query,qlen,target,tlen,evalue,bits,alnlen,fident,qaln,qstart,taln,tstart --threads 1 -e 1e-2 "+self.fasta_file+' '+settings['db']+' '+mmseqs1+' '+tmpdir)
+        #if not os.path.isfile(mmseqs2):
+            #System(settings["mmseqs"]+" easy-search --max-seqs 4 --format-output query,qlen,target,tlen,evalue,bits,alnlen,fident,qaln,qstart,taln,tstart --threads 1 -e 1e-2 "+self.fasta_file+' '+settings['db2']+' '+mmseqs2+' '+tmpdir)
+        #infile_list=[mmseqs1,mmseqs2]
+        infile_list=[mmseqs1]
+        
+        foldseek1=os.path.join(working_dir,"foldseek.m8")
+        foldseek_dict=dict()
+        if self.pdb_dir:
+            cmd=''
+            for filename in os.listdir(self.pdb_dir):
+                if ".pdb" in filename or ".ent" in filename or ".cif" in filename:
+                    cmd+=' '+filename
+            if not os.path.isfile(foldseek1):
+                System("cd "+self.pdb_dir+";"+settings["foldseek"]+" easy-search "+cmd+" "+settings["afdb"]+" "+foldseek1+" "+tmpdir+" --format-output \"query,qlen,target,tlen,evalue,bits,alnlen,nident,qaln,qstart,taln,tstart,qtmscore,ttmscore\" --tmalign-fast 1 -e 0.1 -s 7.5")
+            infile_list.append(foldseek1)
+        
+        exp_dict,site_dict=self.read_annotation(infile_list)
+
+        blast_dict=self.parse_blast(mmseqs1,site_dict,infmt='blast')
+        #blast2_dict=self.parse_blast(mmseqs2,site_dict,infmt='blast')
+        if self.pdb_dir:
+            foldseek_dict=self.parse_blast(foldseek1,site_dict,infmt='foldseek')
+        dl_dict=self.parse_dl( os.path.join(working_dir,"DL.tsv") )
+        #self.write_output(blast1_dict,blast2_dict,foldseek_dict,exp_dict,dl_dict)
+        self.write_output(blast_dict,foldseek_dict,exp_dict,dl_dict)
+        return
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # example usage: python InterLabelGO_pred.py -w example -f example/example.fasta --use_gpu
     parser.add_argument('-w', '--working_dir', type=str, help='working directory', required=True)
+    parser.add_argument('-p', '--pdb_dir', type=str, help='folder for input pdb file(s)', required=False)
     parser.add_argument('-f', '--fasta_file', type=str, help='fasta file', required=True)
     parser.add_argument('-top', '--top_terms', type=int, help='number of top terms to be keeped in the prediction', default=500)
-    parser.add_argument('--esm_path', type=str, help='esm model path', default=settings['esm3b_path'])
     parser.add_argument('--use_gpu', action='store_true', help='use gpu')
-    parser.add_argument('--cache_dir', type=str, help='cache directory', default=None)
     args = parser.parse_args()
     working_dir = os.path.abspath(args.working_dir)
-    fasta_file = os.path.abspath(args.fasta_file)
-    device = 'cuda' if args.use_gpu else 'cpu'
+    fasta_file  = os.path.abspath(args.fasta_file)
+    device      = 'cuda' if args.use_gpu else 'cpu'
+    if args.pdb_dir:
+        pdb_dir = os.path.abspath(args.pdb_dir)
     
     for idx in ['1','2']:
         result_file=os.path.join(working_dir,"DL"+idx+".tsv")
+        if os.path.isfile(result_file):
+            continue
         InterLabelGO_pipeline(
             working_dir=working_dir,
             fasta_file=fasta_file,
@@ -303,8 +651,11 @@ if __name__ == '__main__':
             top_terms=args.top_terms,
             aspects=['EC'],
             model_dir=settings['MODEL_CHECKPOINT_DIR'+idx],
-            cache_dir=args.cache_dir,
             result_file=result_file,
         ).main()
-    
-    combine_result(working_dir)
+
+    combine_pipeline(
+        working_dir=working_dir,
+        fasta_file=fasta_file,
+        pdb_dir=pdb_dir,
+    ).main()

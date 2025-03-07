@@ -22,6 +22,11 @@ example usage:
 #oboTools = ObOTools()
 aspects = ['EC1', 'EC2', 'EC3', 'EC4']
 
+def System(cmd):
+    print(cmd)
+    os.system(cmd)
+    return
+
 def get_seq_dict(fasta_file:str)->dict:
     """read fasta file and return a dict
 
@@ -404,9 +409,7 @@ def split_db(db:str):
             fp=open(train_filename+".fasta",'w')
             fp.write(txt)
             fp.close()
-            cmd=settings['mmseqs']+' createdb '+train_filename+'.fasta '+train_filename
-            print(cmd)
-            os.system(cmd)
+            System(settings['mmseqs']+' createdb '+train_filename+'.fasta '+train_filename)
 
             print(f'reading {aspect} valid fold {i}')
             val_names=np.load(os.path.join(train_dir, 
@@ -438,14 +441,15 @@ def update_data():
             print("ERROR! no such file "+filename)
             exit(1)
 
-    cmd=settings['mmseqs']+' createdb '+settings['train_ec_fasta']+' '+settings['db']
-    print(cmd)
-    os.system(cmd)
+    System(settings['mmseqs']+' createdb '+settings['train_ec_fasta']+' '+settings['db'])
     if not os.path.isdir(settings['tmp_dir']):
         os.makedirs(settings['tmp_dir'])
-    cmd=settings['mmseqs']+' createindex '+settings['db']+' '+settings['tmp_dir']
-    print(cmd)
-    os.system(cmd)
+    System(settings['mmseqs']+' createindex '+settings['db']+' '+settings['tmp_dir'])
+
+    System("cat "+settings['train_ec_fasta']+' '+settings['train_nonec_fasta']+' > '+settings['db2']+".fasta")
+    System(settings['mmseqs']+' createdb '+settings['db2']+'.fasta '+settings['db2'])
+    System(settings['mmseqs']+' createindex '+settings['db2']+' '+settings['tmp_dir'])
+    System('rm '+settings['db2']+'.fasta')
 
     print("read active site from "+settings['train_ec_tsv'])
     bs_dict=dict()
@@ -543,12 +547,8 @@ def update_data():
     fp.write(txt)
     fp.close()
 
-    cmd_list=[
-        settings['cdhit_path']+" -i "+settings['train_seqs1_fasta']+" -o "+settings['train_seqs1_fasta']+".cdhit -c 0.6 -M 5000 -n 4 -T 16 -g 1 -sc 1",
-        settings['cdhit_path']+" -i "+settings['train_seqs2_fasta']+" -o "+settings['train_seqs2_fasta']+".cdhit -c 0.6 -M 5000 -n 4 -T 16 -g 1 -sc 1"]
-    for cmd in cmd_list:
-        print(cmd)
-        os.system(cmd)
+    System(settings['cdhit_path']+" -i "+settings['train_seqs1_fasta']+" -o "+settings['train_seqs1_fasta']+".cdhit -c 0.6 -M 5000 -n 4 -T 16 -g 1 -sc 1")
+    System(settings['cdhit_path']+" -i "+settings['train_seqs2_fasta']+" -o "+settings['train_seqs2_fasta']+".cdhit -c 0.6 -M 5000 -n 4 -T 16 -g 1 -sc 1")
     
     print("prepare "+settings['train_terms1_tsv'])
     line_list=[]
