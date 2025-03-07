@@ -1,5 +1,9 @@
 __pycache__
-Data/
+Data/ec_raw_data
+Data/embeddings
+Data/network_training_data1
+Data/network_training_data2
+tmp
 legacy/
 models/
 conda
