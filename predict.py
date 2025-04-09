@@ -637,8 +637,7 @@ if __name__ == '__main__':
     working_dir = os.path.abspath(args.working_dir)
     fasta_file  = os.path.abspath(args.fasta_file)
     device      = 'cuda' if args.use_gpu else 'cpu'
-    if args.pdb_dir:
-        pdb_dir = os.path.abspath(args.pdb_dir)
+    pdb_dir     = os.path.abspath(args.pdb_dir) if args.pdb_dir else ''
     
     for idx in ['1','2']:
         result_file=os.path.join(working_dir,"DL"+idx+".tsv")
