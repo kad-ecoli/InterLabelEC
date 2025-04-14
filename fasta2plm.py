@@ -21,7 +21,40 @@ from settings import settings_dict as settings
 from settings import training_config
 from esm.models.esmc import ESMC
 from esm.sdk.api import ESMProtein, LogitsConfig
+from esm.tokenization.sequence_tokenizer import EsmSequenceTokenizer
 from tqdm import tqdm
+
+def load_pretrained_esmc_600m(pth_path: str = settings["esm3b_path"], device: torch.device | None = None):
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    elif isinstance(device,str):
+        device = torch.device(device)
+    model = ESMC_600M_202412(device=device, pth_path=pth_path)
+    if device.type != "cpu":
+        model = model.to(torch.bfloat16)
+    assert isinstance(model, ESMC)
+    return model
+
+def get_esmc_model_tokenizers() -> EsmSequenceTokenizer:
+    return EsmSequenceTokenizer()
+
+def ESMC_600M_202412(device: torch.device | str = "cpu", pth_path: str = settings["esm3b_path"], use_flash_attn: bool = True):
+    with torch.device(device):
+        model = ESMC(
+            d_model=1152,
+            n_heads=18,
+            n_layers=36,
+            tokenizer=get_esmc_model_tokenizers(),
+            use_flash_attn=use_flash_attn,
+        ).eval()
+    state_dict = torch.load(
+        pth_path,
+        map_location=device,
+    )
+    model.load_state_dict(state_dict)
+
+    return model
+
 
 def fasta2esm(
         fasta_file,
@@ -51,7 +84,8 @@ def fasta2esm(
     
     print("Using "+device)
 
-    client = ESMC.from_pretrained("esmc_600m").to(device)
+    #client = ESMC.from_pretrained("esmc_600m").to(device)
+    client = load_pretrained_esmc_600m(device=device)
     EMBEDDING_CONFIG = LogitsConfig(
         #sequence=True, 
         #return_embeddings=True, 
@@ -82,8 +116,8 @@ def extract_embeddings(fasta_file):
 def run_mmseqs(fasta_file:str, fasta_dict:dict, db:str, output_dir:str):
     # taln, tseq
     outfile=os.path.join(output_dir,os.path.basename(fasta_file)+".m6")
-    #if not os.path.isfile(outfile):
-    if True:
+    if not os.path.isfile(outfile):
+    #if True:
         cmd=settings['mmseqs']+' easy-search --max-seqs 10 -s 5.7 --split-memory-limit 30G '+fasta_file+' '+db+' '+outfile+' '+settings['tmp_dir']+' --format-output query,target,qlen,tlen,alnlen,fident,bits,tseq,tstart --threads 1 -e 1e-2'
         #cmd=settings['mmseqs']+' easy-search -s 5.7 --split-memory-limit 30G '+fasta_file+' '+db+' '+outfile+' '+settings['tmp_dir']+' --format-output query,target,qlen,tlen,alnlen,fident,bits,tseq,tstart --threads 1 -e 1e-2'
         print(cmd)
@@ -153,7 +187,8 @@ def homolog2esm(
     
     print("Using "+device)
 
-    client = ESMC.from_pretrained("esmc_600m").to(device)
+    #client = ESMC.from_pretrained("esmc_600m").to(device)
+    client = load_pretrained_esmc_600m(device=device)
     EMBEDDING_CONFIG = LogitsConfig(
         #sequence=True, 
         #return_embeddings=True, 
