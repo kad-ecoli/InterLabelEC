@@ -34,6 +34,14 @@ This will convert the EC database into the required format.
 
 ## Data Processing
 
+Download ESMC model:
+
+```bash
+wget "https://zenodo.org/records/15792215/files/Data.zip?download=1" -O Data.zip
+unzip Data.zip
+rm Data.zip
+```
+
 Run the following command:
 
 ```bash
@@ -53,6 +61,7 @@ Download pre-trained models from [Zenodo](https://zenodo.org/records/15792215/fi
 ```bash
 wget "https://zenodo.org/records/15792215/files/models.zip?download=1" -O models.zip
 unzip models.zip
+rm models.zip
 ```
 
 ### 1. Prediction
