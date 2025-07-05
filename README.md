@@ -16,7 +16,7 @@ Python packages are detailed separately in `requirements.txt`.
 
 ## Set up InterLabelEC
 
-3. Run `setup_env.sh` to create an environment and download ESM2 models
+Run `setup_env.sh` to create an environment and download ESM2 models
 
 Alternatively, you can create the environment manually:
 
@@ -48,6 +48,12 @@ This will:
 All paths are specified in `settings.py`.
 
 ## Model Usage
+
+Download pre-trained models from [Zenodo](https://zenodo.org/records/15792215/files/models.zip?download=1)
+```bash
+wget "https://zenodo.org/records/15792215/files/models.zip?download=1" -O models.zip
+unzip models.zip
+```
 
 ### 1. Prediction
 
