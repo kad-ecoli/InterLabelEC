@@ -48,6 +48,14 @@ Run the following command:
 ./conda/bin/python prepare_data.py
 ```
 
+Altenatively, you may use pre-curated data:
+
+```bash
+wget "https://zenodo.org/records/15812849/files/Data2.zip?download=1" -O Data2.zip
+unzip Data2.zip
+rm Data2.zip
+```
+
 This will:
 - Convert raw data (`train_terms.tsv` and `train_seq.fasta`) into required training data
 - Create an Information Content file for the training data (`--ia`)
