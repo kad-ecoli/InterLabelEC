@@ -16,7 +16,7 @@ Python packages are detailed separately in `requirements.txt`.
 
 ## Set up InterLabelEC
 
-3. Run `setup_env.sh` to create an environment and download ESM2 models
+Run `setup_env.sh` to create an environment and download ESM2 models
 
 Alternatively, you can create the environment manually:
 
@@ -34,10 +34,26 @@ This will convert the EC database into the required format.
 
 ## Data Processing
 
+Download ESMC model:
+
+```bash
+wget "https://zenodo.org/records/15792215/files/Data.zip?download=1" -O Data.zip
+unzip Data.zip
+rm Data.zip
+```
+
 Run the following command:
 
 ```bash
 ./conda/bin/python prepare_data.py
+```
+
+Altenatively, you may use pre-curated data:
+
+```bash
+wget "https://zenodo.org/records/15812849/files/Data2.zip?download=1" -O Data2.zip
+unzip Data2.zip
+rm Data2.zip
 ```
 
 This will:
@@ -48,6 +64,13 @@ This will:
 All paths are specified in `settings.py`.
 
 ## Model Usage
+
+Download pre-trained models from [Zenodo](https://zenodo.org/records/15792215/files/models.zip?download=1)
+```bash
+wget "https://zenodo.org/records/15792215/files/models.zip?download=1" -O models.zip
+unzip models.zip
+rm models.zip
+```
 
 ### 1. Prediction
 
