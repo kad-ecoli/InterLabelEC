@@ -410,10 +410,21 @@ class combine_pipeline:
                     blast_dict[qacc][i]=(sacc,score,score,ID,ID)
         return blast_dict
     
-    def combine_result(self):
+    def parse_dl(self,dlfile):
+        dl_dict=dict()
+        fp=open(dlfile)
+        for line in fp.read().splitlines():
+            target,ECnumber,cscore=line.split('\t')[:3]
+            if not target in dl_dict:
+                dl_dict[target]=dict()
+            dl_dict[target][ECnumber]=float(cscore)
+        fp.close()
+        return dl_dict
+
+    def combine_result(self,tsvfile2,tsvfile1,tsvfile):
         target_list=[]
         predict_dict=dict()
-        fp=open(os.path.join(working_dir,"DL2.tsv"))
+        fp=open(tsvfile2)
         for line in fp.read().splitlines():
             items   =line.split('\t')
             target  =items[0]
@@ -424,7 +435,7 @@ class combine_pipeline:
             if ECnumber=='0.-.-.-':
                 predict_dict[target]+=line+'\n'
         fp.close()
-        fp=open(os.path.join(working_dir,"DL1.tsv"))
+        fp=open(tsvfile1)
         for line in fp.read().splitlines():
             items   =line.split('\t')
             target  =items[0]
@@ -437,22 +448,13 @@ class combine_pipeline:
         fp.close()
 
         txt=''.join([predict_dict[target] for target in target_list])
-        fp=open(os.path.join(working_dir,"DL.tsv"),'w')
+        fp=open(tsvfile,'w')
         fp.write(txt)
         fp.close()
-        return
-    
-    def parse_dl(self,dlfile):
-        dl_dict=dict()
-        fp=open(dlfile)
-        for line in fp.read().splitlines():
-            target,ECnumber,cscore=line.split('\t')[:3]
-            if not target in dl_dict:
-                dl_dict[target]=dict()
-            dl_dict[target][ECnumber]=float(cscore)
-        fp.close()
-        return dl_dict
 
+        dl_dict = self.parse_dl(tsvfile)
+        return dl_dict
+    
     def get_score(self,target,blast_dict,exp_dict):
         predict_global_dict=dict()
         predict_local_dict=dict()
@@ -475,7 +477,41 @@ class combine_pipeline:
         weight_dynamic=1-weight_global
         return predict_global_dict,predict_local_dict,denominator_global,denominator_local,weight_dynamic
     
-    def write_output(self,blast_dict,foldseek_dict,exp_dict,dl_dict):
+    def write_blast(self,blast_dict,exp_dict,tsvfile):
+        target_list=sorted(set([target for target in blast_dict]))
+        print("writing %s for %d target"%(tsvfile,len(target_list)))
+        txt_seq2=''
+        for t,target in enumerate(target_list):
+            if t%1000==0:
+                print("predict %d %s"%(t+1,target))
+            predict_blast_global_dict,predict_blast_local_dict,denominator_blast_global,denominator_blast_local,weight_blast=self.get_score(target,blast_dict,exp_dict)
+            ECnumber_list=[ECnumber for ECnumber in predict_blast_global_dict]
+            ECnumber_list=list(set(ECnumber_list))
+            predict_seq2_list=[]
+            for ECnumber in ECnumber_list:
+                score_blast_global=0
+                score_blast_local =0
+                if ECnumber in predict_blast_global_dict:
+                    score_blast_global=predict_blast_global_dict[ECnumber]
+                    score_blast_local =predict_blast_local_dict[ECnumber]
+                    if denominator_blast_global>0:
+                        score_blast_global/=denominator_blast_global
+                    if denominator_blast_local>0:
+                        score_blast_local/=denominator_blast_local
+                cscore_blast=weight_blast*score_blast_global+(1.-weight_blast)*score_blast_local
+                predict_seq2_list.append((cscore_blast,ECnumber))
+            predict_seq2_list.sort(reverse=True)
+            for cscore,ECnumber in predict_seq2_list:
+                if cscore<0.001:
+                    break
+                txt_seq2+="%s\t%s\t%.3f\n"%(target,ECnumber,cscore)
+        fp=open(tsvfile,'w')
+        fp.write(txt_seq2)
+        fp.close()
+        return
+
+    def write_output(self,blast1_dict,blast_dict,foldseek1_dict,foldseek_dict,
+        exp_dict,dl_dict):
         target_list=[target for target in blast_dict
                   ]+[target for target in foldseek_dict
                   ]+[target for target in dl_dict]
@@ -487,12 +523,12 @@ class combine_pipeline:
         txt_str=''
         txt_template=''
         weight_method=0.9
-        weight_dl=0.3  #F1=0.7821
+        weight_dl=0.3
         for t,target in enumerate(target_list):
             if t%1000==0:
                 print("predict %d %s"%(t+1,target))
-            predict_blast_global_dict,predict_blast_local_dict,denominator_blast_global,denominator_blast_local,weight_blast=self.get_score(target,blast_dict,exp_dict)
-            predict_foldseek_global_dict,predict_foldseek_local_dict,denominator_foldseek_global,denominator_foldseek_local,weight_foldseek=self.get_score(target,foldseek_dict,exp_dict)
+            predict_blast_global_dict,predict_blast_local_dict,denominator_blast_global,denominator_blast_local,weight_blast=self.get_score(target,blast1_dict,exp_dict)
+            predict_foldseek_global_dict,predict_foldseek_local_dict,denominator_foldseek_global,denominator_foldseek_local,weight_foldseek=self.get_score(target,foldseek1_dict,exp_dict)
 
             ECnumber_list = [ECnumber for ECnumber in predict_blast_global_dict
                           ]+[ECnumber for ECnumber in predict_foldseek_global_dict]
@@ -511,46 +547,30 @@ class combine_pipeline:
                 if target in dl_dict and ECnumber in dl_dict[target]:
                     cscore_dl = dl_dict[target][ECnumber]
                 
-                if ECnumber=="0.-.-.-":
-                    #if ECnumber in predict_blast2_global_dict:
-                        #cscore_blast=predict_blast2_global_dict[ECnumber]/denominator_blast2_global
-                        #predict_seq2_list.append((cscore_blast,ECnumber))
-                
-                    ##weight_dl = 0.2+0.1*(1 - weight_blast2) # F1=0.8600
-                    #weight_dl = 1.0 # F1=0.9134
-                    #cscore = weight_dl * cscore_dl + (1-weight_dl)*cscore_blast
-                    predict_list.append((cscore_dl,ECnumber))
-                    continue
+                #if ECnumber=="0.-.-.-":
+                    #predict_list.append((cscore_dl,ECnumber))
+                    #continue
 
-                score_blast_global=0
-                score_blast_local =0
-                if ECnumber in predict_blast_global_dict:
-                    score_blast_global=predict_blast_global_dict[ECnumber]
-                    score_blast_local =predict_blast_local_dict[ECnumber]
-                    if denominator_blast_global>0:
-                        score_blast_global/=denominator_blast_global
-                    if denominator_blast_local>0:
-                        score_blast_local/=denominator_blast_local
-                cscore_blast=weight_blast*score_blast_global+(1.-weight_blast)*score_blast_local
+                cscore_blast=0
+                if target in blast_dict and ECnumber in blast_dict[target]:
+                    cscore_blast=blast_dict[target][ECnumber]
                 predict_seq2_list.append((cscore_blast,ECnumber))
 
-                score_foldseek_global=0
-                score_foldseek_local =0
-                if ECnumber in predict_foldseek_global_dict:
-                    score_foldseek_global=predict_foldseek_global_dict[ECnumber]
-                    score_foldseek_local =predict_foldseek_local_dict[ECnumber]
-                    if denominator_foldseek_global>0:
-                        score_foldseek_global/=denominator_foldseek_global
-                    if denominator_foldseek_local>0:
-                        score_foldseek_local/=denominator_foldseek_local
-                cscore_foldseek=weight_foldseek*score_foldseek_global+(1.-weight_foldseek)*score_foldseek_local
+                cscore_foldseek=0
+                if ECnumber.endswith(".-.-.-"):
+                    if target in blast_dict and ECnumber in blast_dict[target]:
+                        cscore_foldseek=blast_dict[target][ECnumber]
+                else:
+                    if target in foldseek_dict and ECnumber in foldseek_dict[target]:
+                        cscore_foldseek=foldseek_dict[target][ECnumber]
                 predict_str_list.append((cscore_foldseek,ECnumber))
 
                 cscore = weight_method* cscore_blast + (1-weight_method)*cscore_foldseek 
                 predict_template_list.append((cscore,ECnumber))
-                weight_dl = 0.2+0.1*(1 - weight_blast) #F1=0.7833, 0.9168
-                if weight_blast>0.9: # 0.7853, 0.9170
-                    weight_dl=0
+                #weight_dl = 0.5*(1 - weight_blast) #F1=0.7833, 0.9168
+                weight_dl = 0.3
+                #if weight_blast>0.9: # 0.7853, 0.9170
+                    #weight_dl=0
 
                 cscore = weight_dl * cscore_dl + (1-weight_dl)*cscore
                 predict_list.append((cscore,ECnumber))
@@ -575,12 +595,12 @@ class combine_pipeline:
                 if cscore<0.001:
                     break
                 txt_template+="%s\t%s\t%.3f\n"%(target,ECnumber,cscore)
-        fp=open(os.path.join(self.working_dir,"mmseqs.tsv"),'w')
-        fp.write(txt_seq2)
-        fp.close()
-        fp=open(os.path.join(self.working_dir,"foldseek.tsv"),'w')
-        fp.write(txt_str)
-        fp.close()
+        #fp=open(os.path.join(self.working_dir,"mmseqs.tsv"),'w')
+        #fp.write(txt_seq2)
+        #fp.close()
+        #fp=open(os.path.join(self.working_dir,"foldseek.tsv"),'w')
+        #fp.write(txt_str)
+        #fp.close()
         fp=open(os.path.join(self.working_dir,"template.tsv"),'w')
         fp.write(txt_template)
         fp.close()
@@ -590,21 +610,26 @@ class combine_pipeline:
         return
 
     def main(self):
-        self.combine_result()
+        tsvfile2 = os.path.join(working_dir,"DL2.tsv")
+        tsvfile1 = os.path.join(working_dir,"DL1.tsv")
+        tsvfile  = os.path.join(working_dir,"DL.tsv")
+        dl_dict  = self.combine_result(tsvfile2, tsvfile1, tsvfile)
 
         #### run mmseqs ####
-        mmseqs1=os.path.join(working_dir,"mmseqs.m6")
-        #mmseqs2=os.path.join(working_dir,"mmseqs2.m6")
+        mmseqs1=os.path.join(working_dir,"mmseqs1.m6")
+        mmseqs2=os.path.join(working_dir,"mmseqs2.m6")
         tmpdir=os.path.join(working_dir,"tmp")
         if not os.path.isfile(mmseqs1):
             System(settings["mmseqs"]+" easy-search --max-seqs 4 --format-output query,qlen,target,tlen,evalue,bits,alnlen,fident,qaln,qstart,taln,tstart --threads 1 -e 1e-2 "+self.fasta_file+' '+settings['db']+' '+mmseqs1+' '+tmpdir)
-        #if not os.path.isfile(mmseqs2):
-            #System(settings["mmseqs"]+" easy-search --max-seqs 4 --format-output query,qlen,target,tlen,evalue,bits,alnlen,fident,qaln,qstart,taln,tstart --threads 1 -e 1e-2 "+self.fasta_file+' '+settings['db2']+' '+mmseqs2+' '+tmpdir)
-        #infile_list=[mmseqs1,mmseqs2]
-        infile_list=[mmseqs1]
+        if not os.path.isfile(mmseqs2):
+            System(settings["mmseqs"]+" easy-search --max-seqs 4 --format-output query,qlen,target,tlen,evalue,bits,alnlen,fident,qaln,qstart,taln,tstart --threads 1 -e 1e-2 "+self.fasta_file+' '+settings['db2']+' '+mmseqs2+' '+tmpdir)
+        infile_list=[mmseqs1,mmseqs2]
+        #infile_list=[mmseqs1]
         
-        foldseek1=os.path.join(working_dir,"foldseek.m8")
-        foldseek_dict=dict()
+        foldseek1=os.path.join(working_dir,"foldseek1.m8")
+        foldseek2=os.path.join(working_dir,"foldseek2.m8")
+        foldseek1_dict=dict()
+        foldseek2_dict=dict()
         if self.pdb_dir:
             cmd=''
             for filename in os.listdir(self.pdb_dir):
@@ -613,16 +638,34 @@ class combine_pipeline:
             if not os.path.isfile(foldseek1):
                 System("cd "+self.pdb_dir+";"+settings["foldseek"]+" easy-search "+cmd+" "+settings["afdb"]+" "+foldseek1+" "+tmpdir+" --format-output \"query,qlen,target,tlen,evalue,bits,alnlen,nident,qaln,qstart,taln,tstart,qtmscore,ttmscore\" --tmalign-fast 1 -e 0.1 -s 7.5")
             infile_list.append(foldseek1)
+            if not os.path.isfile(foldseek2):
+                System("cd "+self.pdb_dir+";"+settings["foldseek"]+" easy-search "+cmd+" "+settings["afdb2"]+" "+foldseek2+" "+tmpdir+" --format-output \"query,qlen,target,tlen,evalue,bits,alnlen,nident,qaln,qstart,taln,tstart,qtmscore,ttmscore\" --tmalign-fast 1 -e 0.1 -s 7.5")
+            infile_list.append(foldseek2)
         
         exp_dict,site_dict=self.read_annotation(infile_list)
 
-        blast_dict=self.parse_blast(mmseqs1,site_dict,infmt='blast')
-        #blast2_dict=self.parse_blast(mmseqs2,site_dict,infmt='blast')
+        blast1_dict=self.parse_blast(mmseqs1,site_dict,infmt='blast')
+        blast2_dict=self.parse_blast(mmseqs2,site_dict,infmt='blast')
+        tsvfile1   =os.path.join(working_dir, "mmseqs1.tsv")
+        tsvfile2   =os.path.join(working_dir, "mmseqs2.tsv")
+        self.write_blast(blast1_dict,exp_dict,tsvfile1)
+        self.write_blast(blast2_dict,exp_dict,tsvfile2)
+        tsvfile    = os.path.join(working_dir,"mmseqs.tsv")
+        blast_dict = self.combine_result(tsvfile2, tsvfile1, tsvfile)
+
         if self.pdb_dir:
-            foldseek_dict=self.parse_blast(foldseek1,site_dict,infmt='foldseek')
-        dl_dict=self.parse_dl( os.path.join(working_dir,"DL.tsv") )
-        #self.write_output(blast1_dict,blast2_dict,foldseek_dict,exp_dict,dl_dict)
-        self.write_output(blast_dict,foldseek_dict,exp_dict,dl_dict)
+            foldseek1_dict=self.parse_blast(foldseek1,site_dict,infmt='foldseek')
+            foldseek2_dict=self.parse_blast(foldseek2,site_dict,infmt='foldseek')
+            tsvfile1   =os.path.join(working_dir, "foldseek1.tsv")
+            tsvfile2   =os.path.join(working_dir, "foldseek2.tsv")
+            self.write_blast(foldseek1_dict,exp_dict,tsvfile1)
+            self.write_blast(foldseek2_dict,exp_dict,tsvfile2)
+            tsvfile    = os.path.join(working_dir,"foldseek.tsv")
+            foldseek_dict= self.combine_result(tsvfile2, tsvfile1, tsvfile)
+        #dl_dict=self.parse_dl( os.path.join(working_dir,"DL.tsv") )
+        #self.write_output(blast_dict,foldseek_dict,exp_dict,dl_dict)
+        self.write_output(blast1_dict,blast_dict,
+            foldseek1_dict,foldseek_dict,exp_dict,dl_dict)
         return
 
 if __name__ == '__main__':
