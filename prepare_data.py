@@ -594,7 +594,7 @@ def update_data():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--Data_dir', type=str, default=settings['DATA_DIR'], help='path to the directory of the data')
-    parser.add_argument('--min_ec',  type=int, default=10, help='minimum number instances of EC number')
+    parser.add_argument('--min_ec',  type=int, default=1, help='minimum number instances of EC number')
     parser.add_argument('--seed', type=int, default=1234567890)
     args = parser.parse_args()
     args.Data_dir = os.path.abspath(args.Data_dir)
