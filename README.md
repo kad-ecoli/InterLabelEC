@@ -1,6 +1,6 @@
-# InterLabelEC
+# EZpred
 
-InterLabelEC predict a query protein's catalytic activity, in the form of Enzyme Commision (EC) numbers. InterLabelEC uses the last three layers the [ESMC](https://github.com/evolutionaryscale/esm?tab=readme-ov-file#esm-c-) large language model to extract sequence features, which are then learned by a series of neural networks to predict EC numbers under a new loss function that incorporates label imbalances and inter-label dependencies. 
+EZpred predicts a query protein's catalytic activity, in the form of Enzyme Commision (EC) numbers. EZpred uses the last three layers the [ESM C](https://github.com/evolutionaryscale/esm?tab=readme-ov-file#esm-c-) large language model to extract sequence features, which are then learned by a series of neural networks to predict EC numbers under a new loss function that incorporates label imbalances and inter-label dependencies. 
 
 ## System Requirements
 
@@ -34,7 +34,7 @@ This will convert the EC database into the required format.
 
 ## Data Processing
 
-Download ESMC model:
+Download ESM C model:
 
 ```bash
 wget "https://zenodo.org/records/15792215/files/Data.zip?download=1" -O Data.zip
@@ -94,7 +94,7 @@ Training configuration is specified in `settings.py`.
 
 ## Citation
 
-Quancheng Liu, Chengxin Zhang, Lydia Freddolino (2024)
-[InterLabelGO+: unraveling label correlations in protein function prediction](https://doi.org/10.1093/bioinformatics/btae655)
-Bioinformatics, 40(11): btae655.
+Chengxin Zhang, Quancheng Liu, Lydia Freddolino (2025)
+[EZpred: improving deep learning-based enzyme function prediction using unlabeled sequence homologs](https://doi.org/10.1101/2025.07.09.663945)
+bioRxiv
 
