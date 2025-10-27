@@ -28,6 +28,7 @@ settings_dict = {
     'mmseqs':  join(root_dir, 'utils/mmseqs/bin/mmseqs'),
     'foldseek':join(root_dir, 'utils/foldseek'),
     'afdb':    join(root_dir,"Data/ec_raw_data/afdb"),
+    'afdb2':   join(root_dir,"Data/ec_raw_data/afdb2"),
     'db':      join(root_dir,"Data/ec_raw_data/exp"),
     'db2':     join(root_dir,"Data/ec_raw_data/exp2"),
 
