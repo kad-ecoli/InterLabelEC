@@ -568,7 +568,7 @@ class combine_pipeline:
                 cscore = weight_method* cscore_blast + (1-weight_method)*cscore_foldseek 
                 predict_template_list.append((cscore,ECnumber))
                 #weight_dl = 0.5*(1 - weight_blast) #F1=0.7833, 0.9168
-                weight_dl = 0.3
+                weight_dl = 0.35
                 #if weight_blast>0.9: # 0.7853, 0.9170
                     #weight_dl=0
 
