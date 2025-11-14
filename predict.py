@@ -536,6 +536,8 @@ class combine_pipeline:
                 ECnumber_list+=[ECnumber for ECnumber in dl_dict[target]]
             ECnumber_list=list(set(ECnumber_list))
 
+            if not self.pdb_dir:
+                weight_blast=1
             weight_method = weight_blast
         
             predict_list=[]
@@ -571,6 +573,8 @@ class combine_pipeline:
                 weight_dl = 0.35
                 #if weight_blast>0.9: # 0.7853, 0.9170
                     #weight_dl=0
+                if not self.pdb_dir:
+                    weight_dl = 0.75
 
                 cscore = weight_dl * cscore_dl + (1-weight_dl)*cscore
                 predict_list.append((cscore,ECnumber))
@@ -630,6 +634,7 @@ class combine_pipeline:
         foldseek2=os.path.join(working_dir,"foldseek2.m8")
         foldseek1_dict=dict()
         foldseek2_dict=dict()
+        foldseek_dict =dict()
         if self.pdb_dir:
             cmd=''
             for filename in os.listdir(self.pdb_dir):
