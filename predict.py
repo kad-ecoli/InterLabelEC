@@ -576,6 +576,9 @@ class combine_pipeline:
                 if not self.pdb_dir:
                     weight_dl = 0.75
 
+                if ECnumber=="0.-.-.-":
+                    weight_dl = 0.7
+
                 cscore = weight_dl * cscore_dl + (1-weight_dl)*cscore
                 predict_list.append((cscore,ECnumber))
             predict_list.sort(reverse=True)
