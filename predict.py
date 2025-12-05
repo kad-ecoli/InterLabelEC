@@ -577,7 +577,7 @@ class combine_pipeline:
                     weight_dl = 0.75
 
                 if ECnumber=="0.-.-.-":
-                    weight_dl = 0.7
+                    weight_dl = 0.6
 
                 cscore = weight_dl * cscore_dl + (1-weight_dl)*cscore
                 predict_list.append((cscore,ECnumber))
